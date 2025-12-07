@@ -290,21 +290,20 @@ export default function Home() {
   ], [])
 
   const handleSelectGift = useCallback((giftId: number) => {
-    // TEMPORAL: Deshabilitado para testing
-    // // Verificar si ya se abrió un regalo hoy (máximo 1 por día)
-    // if (!canOpenGiftToday()) {
-    //   return
-    // }
-    // 
-    // // Verificar que sea a partir del 8 de diciembre
-    // const today = new Date()
-    // const currentDay = today.getDate()
-    // const currentMonth = today.getMonth() + 1
-    // 
-    // // Solo permitir abrir regalos a partir del 8 de diciembre
-    // if (currentMonth !== 12 || currentDay < 8) {
-    //   return
-    // }
+    // Verificar si ya se abrió un regalo hoy (máximo 1 por día)
+    if (!canOpenGiftToday()) {
+      return
+    }
+    
+    // Verificar que sea a partir del 8 de diciembre
+    const today = new Date()
+    const currentDay = today.getDate()
+    const currentMonth = today.getMonth() + 1
+    
+    // Solo permitir abrir regalos a partir del 8 de diciembre
+    if (currentMonth !== 12 || currentDay < 8) {
+      return
+    }
     
     // Prevenir si ya hay una animación en curso
     if (isAnimating) {
@@ -343,20 +342,19 @@ export default function Home() {
     const giftId = selectedGift
     if (giftId === null) return
     
-    // TEMPORAL: Deshabilitado para testing
-    // // Verificar nuevamente que se pueda abrir (por si acaso)
-    // if (!canOpenGiftToday()) {
-    //   return
-    // }
-    // 
-    // // Verificar nuevamente que sea a partir del 8 de diciembre
-    // const today = new Date()
-    // const currentDay = today.getDate()
-    // const currentMonth = today.getMonth() + 1
-    // 
-    // if (currentMonth !== 12 || currentDay < 8) {
-    //   return
-    // }
+    // Verificar nuevamente que se pueda abrir (por si acaso)
+    if (!canOpenGiftToday()) {
+      return
+    }
+    
+    // Verificar nuevamente que sea a partir del 8 de diciembre
+    const today = new Date()
+    const currentDay = today.getDate()
+    const currentMonth = today.getMonth() + 1
+    
+    if (currentMonth !== 12 || currentDay < 8) {
+      return
+    }
     
     setIsAnimating(true)
     setShowQuiz(false)
@@ -441,15 +439,15 @@ export default function Home() {
     )
   }
 
-  // TEMPORAL: Deshabilitado para testing - Si no está desbloqueado, mostrar el contador
-  // if (!isUnlocked) {
-  //   return (
-  //     <CountdownLock 
-  //       targetDate={targetDate} 
-  //       onUnlock={() => setIsUnlocked(true)} 
-  //     />
-  //   )
-  // }
+  // Si no está desbloqueado, mostrar el contador
+  if (!isUnlocked) {
+    return (
+      <CountdownLock 
+        targetDate={targetDate} 
+        onUnlock={() => setIsUnlocked(true)} 
+      />
+    )
+  }
 
   return (
     <main className="min-h-screen overflow-hidden" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
