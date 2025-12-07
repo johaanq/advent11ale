@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Snowfall from "@/components/snowfall"
 
 interface CountdownLockProps {
   targetDate: Date
@@ -58,6 +59,7 @@ export function CountdownLock({ targetDate, onUnlock }: CountdownLockProps) {
         backgroundRepeat: 'no-repeat'
       }}
     >
+      <Snowfall />
       <div className="relative z-10 text-center px-4 sm:px-6">
         {/* Contador */}
         <div className="grid grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
