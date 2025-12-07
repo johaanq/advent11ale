@@ -16,8 +16,8 @@ export function ChristmasTree() {
 
   // Crear domo con ondulación y offset angular para cada capa
   const createDomeTier = (radius: number, heightRatio: number = 0.5, angleOffset: number = 0) => {
-    // Crear domo (hemisferio superior de esfera)
-    const geometry = new THREE.SphereGeometry(radius, 64, 32, 0, Math.PI * 2, 0, Math.PI * heightRatio)
+    // Crear domo (hemisferio superior de esfera) - Reducido de 64 a 32 segmentos para mejor rendimiento
+    const geometry = new THREE.SphereGeometry(radius, 32, 16, 0, Math.PI * 2, 0, Math.PI * heightRatio)
     
     const positionAttribute = geometry.attributes.position
     const vertices = []

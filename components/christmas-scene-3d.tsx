@@ -54,7 +54,7 @@ function PictureFrameContent({ position }: { position: [number, number, number] 
       </mesh>
 
       {/* Imagen de Snoopy - Cuadrada 236x236 - Rotada 180 grados en Z para corregir orientación - Plana */}
-      <mesh position={[0, 0, 0.002]} rotation={[0, 0, Math.PI]} receiveShadow>
+      <mesh position={[0, 0, 0.002]} rotation={[0, 0, Math.PI]}>
         <planeGeometry args={[2.5, 2.5]} />
         <meshStandardMaterial 
           map={texture}
@@ -145,10 +145,16 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
   return (
     <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
       <Canvas 
-        shadows 
+        shadows={false}
         camera={{ position: [-1, 2, 6], fov: 30 }}
         performance={{ min: 0.5 }}
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
+        gl={{ 
+          antialias: false,
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true
+        }}
       >
         <OrbitControls 
           target={[11, 3, -7]}
@@ -163,19 +169,11 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
         {/* Iluminación ambiental cálida */}
         <ambientLight intensity={0.4} color="#fff5e6" />
         
-        {/* Luz principal (simula luz de ventana) */}
+        {/* Luz principal (simula luz de ventana) - Sin sombras para mejor rendimiento */}
         <directionalLight 
           position={[5, 10, 5]} 
           intensity={1.0}
           color="#ffffff"
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={50}
-          shadow-camera-left={-15}
-          shadow-camera-right={15}
-          shadow-camera-top={15}
-          shadow-camera-bottom={-15}
         />
         
         {/* Luces de acento */}
@@ -221,7 +219,7 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
           </mesh>
 
           {/* PARED TRASERA BLANCA */}
-          <mesh position={[0, 4, -12]} receiveShadow>
+          <mesh position={[0, 4, -12]}>
             <planeGeometry args={[30, 8]} />
             <meshStandardMaterial 
               color="#ffffff" 
@@ -241,7 +239,7 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
           </mesh>
 
           {/* PARED DERECHA BLANCA */}
-          <mesh position={[15, 4, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+          <mesh position={[15, 4, 0]} rotation={[0, -Math.PI / 2, 0]}>
             <planeGeometry args={[25, 8]} />
             <meshStandardMaterial 
               color="#ffffff" 
@@ -261,7 +259,7 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
           </mesh>
 
           {/* TECHO BLANCO */}
-          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 8, 0]} receiveShadow>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 8, 0]}>
             <planeGeometry args={[30, 25]} />
             <meshStandardMaterial 
               color="#fafafa" 
@@ -271,7 +269,7 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
           </mesh>
 
           {/* ALFOMBRA ROJA DEBAJO DEL ÁRBOL - Ligeramente elevada */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[13, 0.005, -10]} receiveShadow>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[13, 0.005, -10]}>
             <circleGeometry args={[3.5, 32]} />
             <meshStandardMaterial 
               color="rgb(120, 30, 40)" 

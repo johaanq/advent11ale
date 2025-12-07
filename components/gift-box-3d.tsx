@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useMemo } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import type { Mesh, Group } from "three"
 import * as THREE from "three"
@@ -36,8 +36,15 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
     }
   }, [isAnimating, animationStartTime, position])
 
+  // Memoizar valores calculados para evitar recrearlos en cada frame
+  const targetScale = useMemo(() => new THREE.Vector3(1.15, 1.15, 1.15), [])
+  const defaultScale = useMemo(() => new THREE.Vector3(1, 1, 1), [])
+
   useFrame((state) => {
     if (!groupRef.current) return
+    
+    // Optimización: Saltar frame si está deshabilitado y no hay animación
+    if (isDisabled && !isAnimating && !hovered) return
 
     // ANIMACIÓN DE CLICK: Mover al centro de la pantalla, girar y abrir
     if (isAnimating && animationStartTime) {
@@ -60,8 +67,8 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
       groupRef.current.position.z = THREE.MathUtils.lerp(initialPosition[2], centerZ, easedProgress)
 
       // Escalar (hacer más grande)
-      const targetScale = 1.8
-      const currentScale = THREE.MathUtils.lerp(1, targetScale, easedProgress)
+      const animationScale = 1.8
+      const currentScale = THREE.MathUtils.lerp(1, animationScale, easedProgress)
       groupRef.current.scale.set(currentScale, currentScale, currentScale)
 
       // Rotación continua mientras se mueve
@@ -86,17 +93,18 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
       return
     }
 
-    const time = state.clock.elapsedTime
-    const vibrationX = isDisabled ? 0 : Math.sin(time * 8 + position[0]) * 0.008
-    const vibrationZ = isDisabled ? 0 : Math.cos(time * 6 + position[2]) * 0.008
-    
+    // Optimización: Solo calcular time y vibraciones si es necesario
     if (hovered && !isDisabled) {
-      // Elevación más pronunciada
+      const time = state.clock.elapsedTime
+      const vibrationX = Math.sin(time * 8 + position[0]) * 0.008
+      const vibrationZ = Math.cos(time * 6 + position[2]) * 0.008
+      
+      // Elevación más pronunciada (simplificada)
       groupRef.current.position.y = position[1] + 0.3 + Math.sin(time * 2.5) * 0.05
       groupRef.current.position.x = position[0] + vibrationX * 2
       groupRef.current.position.z = position[2] + vibrationZ * 2
-      groupRef.current.scale.lerp(new THREE.Vector3(1.15, 1.15, 1.15), 0.15)
-      // Rotación suave y continua
+      groupRef.current.scale.lerp(targetScale, 0.15)
+      // Rotación suave y continua (simplificada)
       groupRef.current.rotation.y = time * 0.5
       groupRef.current.rotation.x = Math.sin(time * 1.5) * 0.1
       
@@ -106,10 +114,19 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         lidRef.current.position.y = h * 0.48
       }
     } else {
+      // Solo calcular vibraciones si no está deshabilitado
+      if (!isDisabled) {
+        const time = state.clock.elapsedTime
+        const vibrationX = Math.sin(time * 8 + position[0]) * 0.008
+        const vibrationZ = Math.cos(time * 6 + position[2]) * 0.008
+        groupRef.current.position.x = position[0] + vibrationX
+        groupRef.current.position.z = position[2] + vibrationZ
+      } else {
+        groupRef.current.position.x = position[0]
+        groupRef.current.position.z = position[2]
+      }
       groupRef.current.position.y = position[1]
-      groupRef.current.position.x = position[0] + vibrationX
-      groupRef.current.position.z = position[2] + vibrationZ
-      groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1)
+      groupRef.current.scale.lerp(defaultScale, 0.1)
       // Volver a la rotación original suavemente - normalizar ángulos primero
       let targetY = 0
       let targetX = 0
@@ -157,13 +174,21 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
   return (
       <group ref={groupRef} position={position}>
       <group
-        onPointerEnter={() => !isDisabled && setHovered(true)}
-        onPointerLeave={() => setHovered(false)}
+        onPointerEnter={(e) => {
+          e.stopPropagation()
+          if (!isDisabled) {
+            setHovered(true)
+          }
+        }}
+        onPointerLeave={(e) => {
+          e.stopPropagation()
+          setHovered(false)
+        }}
         onClick={isDisabled ? undefined : onClick}
       >
-        {/* CAJA PRINCIPAL con acabado glossy */}
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[w, h, d, 32, 32, 32]} />
+        {/* CAJA PRINCIPAL con acabado glossy - Geometría optimizada (reducida de 32 a 8 segmentos) */}
+        <mesh>
+          <boxGeometry args={[w, h, d, 8, 8, 8]} />
           <meshStandardMaterial
             color={style.box}
             roughness={0.22}
@@ -173,8 +198,8 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
 
         {/* TAPA - Capa superior ligeramente más grande - Con ref para animación */}
         <group ref={lidRef} position={[0, h * 0.48, 0]}>
-          <mesh castShadow receiveShadow>
-            <boxGeometry args={[w * 1.04, h * 0.12, d * 1.04, 24, 24, 24]} />
+          <mesh>
+            <boxGeometry args={[w * 1.04, h * 0.12, d * 1.04, 8, 8, 8]} />
             <meshStandardMaterial
               color={style.box}
               roughness={0.18}
@@ -184,7 +209,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
 
 
           {/* LISTÓN SOBRE LA TAPA (horizontal) */}
-          <mesh castShadow>
+          <mesh>
             <boxGeometry args={[w * 1.08, 0.18, 0.24]} />
             <meshStandardMaterial 
             color={style.ribbon} 
@@ -194,7 +219,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
           </mesh>
 
           {/* LISTÓN SOBRE LA TAPA (vertical) */}
-          <mesh castShadow>
+          <mesh>
             <boxGeometry args={[0.24, 0.18, d * 1.08]} />
             <meshStandardMaterial 
             color={style.ribbon} 
@@ -206,8 +231,8 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
           {/* MOÑO REAL - Sobre la tapa - Dentro del grupo de la tapa */}
           <group position={[0, h * 0.06 + 0.12, 0]}>
             {/* Centro/nudo del moño */}
-            <mesh castShadow>
-              <sphereGeometry args={[0.1, 20, 20]} />
+            <mesh>
+              <sphereGeometry args={[0.1, 12, 12]} />
             <meshStandardMaterial
               color={style.ribbon}
               roughness={0.1}
@@ -217,8 +242,8 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
 
             {/* Loop IZQUIERDO - se levanta hacia arriba */}
             <group position={[-0.15, 0.08, 0]} rotation={[0, 0, Math.PI / 2.5]}>
-              <mesh castShadow>
-                <torusGeometry args={[0.12, 0.05, 16, 32, Math.PI]} />
+              <mesh>
+                <torusGeometry args={[0.12, 0.05, 8, 16, Math.PI]} />
             <meshStandardMaterial
               color={style.ribbon}
               roughness={0.1}
@@ -229,8 +254,8 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
 
             {/* Loop DERECHO - se levanta hacia arriba */}
             <group position={[0.15, 0.08, 0]} rotation={[0, 0, -Math.PI / 2.5]}>
-              <mesh castShadow>
-                <torusGeometry args={[0.12, 0.05, 16, 32, Math.PI]} />
+              <mesh>
+                <torusGeometry args={[0.12, 0.05, 8, 16, Math.PI]} />
             <meshStandardMaterial
               color={style.ribbon}
               roughness={0.1}
@@ -240,7 +265,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
             </group>
 
             {/* Cola IZQUIERDA - cuelga hacia afuera */}
-            <mesh position={[-0.14, -0.18, 0]} rotation={[0, 0, -0.15]} castShadow>
+            <mesh position={[-0.14, -0.18, 0]} rotation={[0, 0, -0.15]}>
               <boxGeometry args={[0.09, 0.28, 0.04]} />
             <meshStandardMaterial
               color={style.ribbon}
@@ -250,7 +275,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
             </mesh>
 
             {/* Cola DERECHA - cuelga hacia afuera */}
-            <mesh position={[0.14, -0.18, 0]} rotation={[0, 0, 0.15]} castShadow>
+            <mesh position={[0.14, -0.18, 0]} rotation={[0, 0, 0.15]}>
               <boxGeometry args={[0.09, 0.28, 0.04]} />
             <meshStandardMaterial
               color={style.ribbon}
@@ -264,7 +289,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         {/* LISTÓN HORIZONTAL - Banda estrecha alrededor del medio */}
         
         {/* Frente */}
-        <mesh position={[0, 0, d * 0.52]} castShadow>
+        <mesh position={[0, 0, d * 0.52]}>
           <boxGeometry args={[w * 1.05, 0.18, 0.02]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -274,7 +299,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Lado DERECHO */}
-        <mesh position={[w * 0.52, 0, 0]} castShadow>
+        <mesh position={[w * 0.52, 0, 0]}>
           <boxGeometry args={[0.02, 0.18, d * 1.05]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -284,7 +309,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Lado IZQUIERDO */}
-        <mesh position={[-w * 0.52, 0, 0]} castShadow>
+        <mesh position={[-w * 0.52, 0, 0]}>
           <boxGeometry args={[0.02, 0.18, d * 1.05]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -294,7 +319,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Atrás */}
-        <mesh position={[0, 0, -d * 0.52]} castShadow>
+        <mesh position={[0, 0, -d * 0.52]}>
           <boxGeometry args={[w * 1.05, 0.18, 0.02]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -306,7 +331,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         {/* LISTÓN VERTICAL - Cruz sobre la tapa */}
         
         {/* Frente a tapa */}
-        <mesh position={[0, 0, d * 0.52]} castShadow>
+        <mesh position={[0, 0, d * 0.52]}>
           <boxGeometry args={[0.18, h * 1.05, 0.02]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -316,7 +341,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Sobre la tapa */}
-        <mesh position={[0, h * 0.52, 0]} castShadow>
+        <mesh position={[0, h * 0.52, 0]}>
           <boxGeometry args={[0.18, 0.02, d * 1.05]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -326,7 +351,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Atrás */}
-        <mesh position={[0, 0, -d * 0.52]} castShadow>
+        <mesh position={[0, 0, -d * 0.52]}>
           <boxGeometry args={[0.18, h * 1.05, 0.02]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -336,7 +361,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Lado DERECHO vertical */}
-        <mesh position={[w * 0.52, 0, 0]} castShadow>
+        <mesh position={[w * 0.52, 0, 0]}>
           <boxGeometry args={[0.02, h * 1.05, 0.18]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -346,7 +371,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* Lado IZQUIERDO vertical */}
-        <mesh position={[-w * 0.52, 0, 0]} castShadow>
+        <mesh position={[-w * 0.52, 0, 0]}>
           <boxGeometry args={[0.02, h * 1.05, 0.18]} />
           <meshStandardMaterial 
             color={style.ribbon} 
@@ -356,7 +381,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
         </mesh>
 
         {/* ABAJO vertical */}
-        <mesh position={[0, -h * 0.52, 0]} receiveShadow>
+        <mesh position={[0, -h * 0.52, 0]}>
           <boxGeometry args={[0.18, 0.02, d * 1.05]} />
           <meshStandardMaterial 
             color={style.ribbon} 

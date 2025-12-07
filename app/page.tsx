@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, useEffect, useCallback, memo } from "react"
+import { useState, useEffect, useCallback, memo, lazy, Suspense, useMemo } from "react"
 import { Navbar } from "@/components/navbar"
 import { WelcomeSection } from "@/components/welcome-section"
-import { ChristmasScene3D } from "@/components/christmas-scene-3d"
 import { GiftDetailPage } from "@/components/gift-detail-page"
 import { GiftQuizPage } from "@/components/gift-quiz-page"
 import { OpenedGiftsPage } from "@/components/opened-gifts-page"
 import { CountdownLock } from "@/components/countdown-lock"
 import Snowfall from "@/components/snowfall"
+
+// Lazy load del componente 3D pesado
+const ChristmasScene3D = lazy(() => import("@/components/christmas-scene-3d").then(module => ({ default: module.ChristmasScene3D })))
 import { getOpenedGifts, openGift, getLastGiftOpenedDate, subscribeToOpenedGifts } from "@/lib/supabase-gifts"
 import { supabase } from "@/lib/supabase"
 
@@ -73,8 +75,12 @@ export default function Home() {
     return true
   }
 
-  // Cargar regalos abiertos desde Supabase
+  // Cargar regalos abiertos desde Supabase (no bloquea el render inicial)
   useEffect(() => {
+    // Marcar como hidratado inmediatamente para no bloquear el render
+    setIsHydrated(true)
+    
+    // Cargar datos de Supabase de forma asíncrona sin bloquear
     const loadOpenedGifts = async () => {
       try {
         const giftIds = await getOpenedGifts()
@@ -85,15 +91,15 @@ export default function Home() {
         if (lastDate) {
           setLastGiftOpenedDate(lastDate)
         }
-        
-        setIsHydrated(true)
       } catch (error) {
         console.error('Error al cargar regalos abiertos desde Supabase:', error)
-        setIsHydrated(true) // Marcar como hidratado incluso si hay error
       }
     }
 
-    loadOpenedGifts()
+    // Cargar en el siguiente tick para no bloquear el render inicial
+    setTimeout(() => {
+      loadOpenedGifts()
+    }, 0)
   }, [])
 
   // Suscribirse a cambios en tiempo real para sincronización entre dispositivos
@@ -143,14 +149,15 @@ export default function Home() {
   // Exponer función de reinicio en window para uso desde consola (solo para desarrollo)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).resetGifts = () => {
-        resetGifts()
+      (window as any).resetGifts = async () => {
+        await resetGifts()
         window.location.reload()
       }
     }
   }, [resetGifts])
 
-  const gifts = [
+  // Memoizar el array de regalos para evitar recrearlo en cada render
+  const gifts = useMemo(() => [
     {
       id: 1,
       day: 8,
@@ -280,7 +287,7 @@ export default function Home() {
         }
       ]
     },
-  ]
+  ], [])
 
   const handleSelectGift = useCallback((giftId: number) => {
     // TEMPORAL: Deshabilitado para testing
@@ -455,12 +462,14 @@ export default function Home() {
       <div className="flex flex-col lg:flex-row h-[calc(100vh-60px)]">
         <WelcomeSection openedGifts={openedGifts} gifts={gifts} />
         <div className="w-full lg:w-3/5 h-[50vh] lg:h-full">
-          <ChristmasScene3D 
-            gifts={gifts} 
-            onSelectGift={handleSelectGift} 
-            isAnimating={isAnimating} 
-            openedGifts={openedGifts} 
-          />
+          <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-white">Cargando escena 3D...</div>}>
+            <ChristmasScene3D 
+              gifts={gifts} 
+              onSelectGift={handleSelectGift} 
+              isAnimating={isAnimating} 
+              openedGifts={openedGifts} 
+            />
+          </Suspense>
         </div>
       </div>
     </main>

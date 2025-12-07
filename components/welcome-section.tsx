@@ -12,7 +12,7 @@ interface WelcomeSectionProps {
   gifts?: Gift[]
 }
 
-export function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeSectionProps) {
+export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeSectionProps) {
   const birthdayDate = new Date(2025, 11, 11)
   const today = new Date()
   const currentDay = today.getDate()
@@ -173,14 +173,15 @@ export function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeS
               {/* Grid de 5 filas x 7 columnas (31 días) */}
               <div className="grid grid-cols-7 gap-1.5">
                 {useMemo(() => {
-                  // Calcular días disponibles una sola vez
+                  // Calcular días disponibles una sola vez (optimizado con Map)
+                  const giftsMap = new Map(gifts.map(g => [g.day, g]))
                   const availableGiftDays = gifts
                     .filter(g => currentMonth === 12 && currentDay >= g.day)
                     .map(g => g.day)
                     .sort((a, b) => a - b)
                   
                   const firstAvailableDay = availableGiftDays.find(dayNum => {
-                    const giftForDay = gifts.find(g => g.day === dayNum)
+                    const giftForDay = giftsMap.get(dayNum)
                     return giftForDay && !openedGifts.has(giftForDay.id)
                   })
                   
@@ -189,29 +190,33 @@ export function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeS
                     '🎅', '🎄', '☃️', '🦌'
                   ]
                   
-                  // Generar rotaciones aleatorias para cada día (se mantienen consistentes)
+                  // Generar rotaciones aleatorias para cada día (se mantienen consistentes) - Memoizado
+                  const rotationCache = new Map<number, number>()
                   const generateRotation = (day: number) => {
-                    // Usar el día como semilla para consistencia
+                    if (rotationCache.has(day)) return rotationCache.get(day)!
                     const seed = day * 7 + 13
                     const random = ((seed * 9301 + 49297) % 233280) / 233280
-                    // Rotación entre -3 y 3 grados, excluyendo 0
                     const rotation = (random * 6 - 3)
-                    return Math.abs(rotation) < 0.5 ? (rotation > 0 ? 1 : -1) : rotation
+                    const result = Math.abs(rotation) < 0.5 ? (rotation > 0 ? 1 : -1) : rotation
+                    rotationCache.set(day, result)
+                    return result
                   }
                   
-                  // Generar rotaciones aleatorias para íconos (5-10 grados, izquierda o derecha)
+                  // Generar rotaciones aleatorias para íconos (5-10 grados, izquierda o derecha) - Memoizado
+                  const iconRotationCache = new Map<number, number>()
                   const generateIconRotation = (day: number) => {
-                    // Usar una semilla diferente para los íconos
+                    if (iconRotationCache.has(day)) return iconRotationCache.get(day)!
                     const seed = day * 11 + 23
                     const random = ((seed * 9301 + 49297) % 233280) / 233280
-                    // Rotación entre 5 y 10 grados, con dirección aleatoria
-                    const baseRotation = 5 + (random * 5) // Entre 5 y 10
-                    const direction = random > 0.5 ? 1 : -1 // Izquierda o derecha
-                    return baseRotation * direction
+                    const baseRotation = 5 + (random * 5)
+                    const direction = random > 0.5 ? 1 : -1
+                    const result = baseRotation * direction
+                    iconRotationCache.set(day, result)
+                    return result
                   }
                   
                   return Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-                    const gift = gifts.find(g => g.day === day)
+                    const gift = giftsMap.get(day)
                     const isOpened = gift ? openedGifts.has(gift.id) : false
                     const hasGift = gift !== undefined
                     const isAvailable = currentMonth === 12 && currentDay >= day
@@ -377,4 +382,4 @@ export function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeS
       </div>
     </div>
   )
-}
+})

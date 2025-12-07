@@ -22,8 +22,10 @@ export default function Snowfall() {
 
     updateCanvasSize()
 
-    // Crear copos de nieve - empezar desde el navbar hacia abajo (reducido para mejor rendimiento)
-    const snowflakeCount = Math.min(150, Math.floor((canvas.width * canvas.height) / 15000))
+    // Crear copos de nieve - Adaptativo según el dispositivo para mejor rendimiento
+    const isMobile = window.innerWidth < 768
+    const baseCount = isMobile ? 50 : 100
+    const snowflakeCount = Math.min(baseCount, Math.floor((canvas.width * canvas.height) / 20000))
     const snowflakes = Array.from({ length: snowflakeCount }, () => ({
       x: Math.random() * canvas.width, // Distribución aleatoria en todo el ancho
       y: navbarHeight + Math.random() * (canvas.height - navbarHeight), // Empezar desde navbar hacia abajo
