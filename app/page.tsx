@@ -23,19 +23,10 @@ export default function Home() {
   const [returnToOpenedGifts, setReturnToOpenedGifts] = useState(false) // Nuevo estado para controlar el retorno
   const [isUnlocked, setIsUnlocked] = useState(false)
   
-  // Fecha objetivo: Lunes 8 de diciembre de 2024 (o el año actual)
+  // Fecha objetivo: Lunes 8 de diciembre de 2025 a las 00:10 AM
   const getTargetDate = () => {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    // Crear fecha para el 8 de diciembre a las 00:00:00
-    const targetDate = new Date(currentYear, 11, 8, 0, 0, 0, 0) // Mes 11 = diciembre (0-indexed)
-    
-    // Si ya pasó el 8 de diciembre de este año, usar el del próximo año
-    if (now > targetDate) {
-      return new Date(currentYear + 1, 11, 8, 0, 0, 0, 0)
-    }
-    
-    return targetDate
+    // La fecha de desbloqueo es fija: 8 de Diciembre de 2025 a las 00:10:00
+    return new Date(2025, 11, 8, 0, 10, 0, 0)
   }
   
   const targetDate = getTargetDate()
