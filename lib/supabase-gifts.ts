@@ -64,13 +64,9 @@ export async function getLastGiftOpenedDate(): Promise<string | null> {
       .select('opened_at')
       .order('opened_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (error) {
-      // Si no hay registros, retornar null
-      if (error.code === 'PGRST116') {
-        return null
-      }
       console.error('Error al obtener última fecha:', error)
       return null
     }

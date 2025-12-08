@@ -2,7 +2,7 @@
 
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, PerspectiveCamera, useTexture } from "@react-three/drei"
-import { Suspense, useState, useMemo, useCallback } from "react"
+import { Suspense, useState, useMemo, useCallback, useEffect } from "react"
 import { ChristmasTree } from "./christmas-tree-3d"
 import { GiftBox3D } from "./gift-box-3d"
 import * as THREE from "three"
@@ -20,17 +20,19 @@ function PictureFrameContent({ position }: { position: [number, number, number] 
   const texture = useTexture('/snoopy.jpg')
   
   // Configurar la textura correctamente para mejor calidad sin rayas
-  if (texture) {
-    texture.flipY = false
-    texture.colorSpace = THREE.SRGBColorSpace
-    texture.minFilter = THREE.LinearFilter
-    texture.magFilter = THREE.LinearFilter
-    texture.generateMipmaps = false
-    texture.anisotropy = 16
-    texture.wrapS = THREE.ClampToEdgeWrapping
-    texture.wrapT = THREE.ClampToEdgeWrapping
-    texture.needsUpdate = true
-  }
+  useEffect(() => {
+    if (texture) {
+      texture.flipY = false
+      texture.colorSpace = THREE.SRGBColorSpace
+      texture.minFilter = THREE.LinearFilter
+      texture.magFilter = THREE.LinearFilter
+      texture.generateMipmaps = false
+      texture.anisotropy = 16
+      texture.wrapS = THREE.ClampToEdgeWrapping
+      texture.wrapT = THREE.ClampToEdgeWrapping
+      texture.needsUpdate = true
+    }
+  }, [texture])
 
   return (
     <group position={position} rotation={[0, -Math.PI / 2, 0]}>
@@ -70,37 +72,12 @@ function PictureFrameContent({ position }: { position: [number, number, number] 
 // Componente wrapper que maneja errores
 function PictureFrame({ position }: { position: [number, number, number] }) {
   return (
-    <Suspense fallback={
-      <group position={position} rotation={[0, -Math.PI / 2, 0]}>
-        {/* Marco del cuadro - Rojo (placeholder mientras carga) - Plano */}
-        <mesh>
-          <planeGeometry args={[3.0, 3.0]} />
-          <meshStandardMaterial 
-            color="rgb(120, 30, 40)" 
-            roughness={0.6}
-          />
-        </mesh>
-        <mesh position={[0, 0, 0.001]}>
-          <planeGeometry args={[2.8, 2.8]} />
-          <meshStandardMaterial 
-            color="rgb(100, 25, 35)" 
-            roughness={0.7}
-          />
-        </mesh>
-        {/* Placeholder gris */}
-        <mesh position={[0, 0, 0.002]}>
-          <planeGeometry args={[2.5, 2.5]} />
-          <meshStandardMaterial 
-            color="rgb(220, 220, 220)"
-            roughness={0.3}
-          />
-        </mesh>
-      </group>
-    }>
+    <Suspense fallback={null}>
       <PictureFrameContent position={position} />
     </Suspense>
   )
 }
+
 
 export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts = new Set() }: ChristmasScene3DProps) {
   const [selectedGiftId, setSelectedGiftId] = useState<number | null>(null)
@@ -111,6 +88,9 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
       return
     }
     
+    // TESTING: Bypass de lógica secuencial
+    // Permitir abrir directamente el regalo seleccionado
+    /*
     // Determinar qué regalo debe abrirse según el orden
     // Primer regalo abierto = día 8, segundo = día 9, tercero = día 10, cuarto = día 11
     const openedCount = openedGifts.size
@@ -127,7 +107,11 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
     if (!giftToOpen) {
       return
     }
+    */
     
+    const giftToOpen = gifts.find(g => g.id === id)
+    if (!giftToOpen) return
+
     // Prevenir si el regalo que debe abrirse ya está abierto
     if (openedGifts.has(giftToOpen.id)) {
       return
@@ -135,9 +119,9 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
     
     setSelectedGiftId(id) // Usar el ID del regalo clicado para la animación
     // Esperar a que termine la animación (1.8 segundos) antes de cambiar de página
-    // Pasar el ID del regalo que debe abrirse, no el que se hizo clic
+    // TESTING: Pasar el ID del regalo CLICADO
     setTimeout(() => {
-      onSelectGift(giftToOpen.id)
+      onSelectGift(id) // Usar id directo
       setSelectedGiftId(null)
     }, 1800)
   }, [gifts, openedGifts, isAnimating, onSelectGift])
@@ -147,13 +131,15 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
       <Canvas 
         shadows={false}
         camera={{ position: [-1, 2, 6], fov: 30 }}
-        performance={{ min: 0.5 }}
+        performance={{ min: 0.5, max: 1 }}
         dpr={[1, 1.5]}
         gl={{ 
           antialias: false,
           powerPreference: "high-performance",
           stencil: false,
-          depth: true
+          depth: true,
+          alpha: false,
+          logarithmicDepthBuffer: false
         }}
       >
         <OrbitControls 
@@ -288,38 +274,6 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
             />
           </mesh>
 
-          {/* VENTANA CON NIEVE - Pared trasera (visible desde la cámara) */}
-          <group position={[5, 4, -11.85]} rotation={[0, 0, 0]}>
-            {/* Marco de ventana BLANCO */}
-            <mesh castShadow>
-              <boxGeometry args={[5, 3.5, 0.15]} />
-              <meshStandardMaterial color="#e8e8e8" roughness={0.7} />
-            </mesh>
-            
-            {/* Cristal azul (vista al exterior nevando) */}
-            <mesh position={[0, 0, -0.08]}>
-              <planeGeometry args={[4.6, 3.1]} />
-              <meshStandardMaterial 
-                color="#87CEEB" 
-                transparent
-                opacity={0.5}
-                roughness={0.05}
-                metalness={0.2}
-              />
-            </mesh>
-            
-            {/* Marco cruz divisoria BLANCO */}
-            <mesh position={[0, 0, 0]}>
-              <boxGeometry args={[5.1, 0.1, 0.12]} />
-              <meshStandardMaterial color="#d0d0d0" roughness={0.8} />
-            </mesh>
-            <mesh position={[0, 0, 0]}>
-              <boxGeometry args={[0.1, 3.6, 0.12]} />
-              <meshStandardMaterial color="#d0d0d0" roughness={0.8} />
-            </mesh>
-          </group>
-
-
 
           {/* ÁRBOL DE NAVIDAD - Pegado a la esquina derecha trasera */}
           <group position={[13, 0, -10]} scale={1.35}>
@@ -339,15 +293,19 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
             const treeZ = -10
             
             return gifts
-              .filter(gift => !openedGifts.has(gift.id))
               .map((gift) => {
                 // Encontrar el índice original del regalo para usar la configuración correcta
                 const originalIndex = gifts.findIndex(g => g.id === gift.id)
                 const setup = giftSetup[originalIndex]
                 const x = treeX + Math.cos(setup.angle) * setup.dist
                 const z = treeZ + Math.sin(setup.angle) * setup.dist
+                
+                // Determinar si el regalo está abierto
+                const isOpened = openedGifts.has(gift.id)
 
                 const isCurrentlyAnimating = selectedGiftId === gift.id
+                // Si está abierto, no está deshabilitado visualmente pero no reacciona igual
+                // Si está animando, otros están deshabilitados
                 const isDisabled = (isAnimating || selectedGiftId !== null) && !isCurrentlyAnimating
                 
                 return {
@@ -357,7 +315,8 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
                   height: heights[originalIndex],
                   rotation: setup.angle + Math.PI,
                   isCurrentlyAnimating,
-                  isDisabled
+                  isDisabled,
+                  isOpened // Nuevo estado
                 }
               })
             }, [gifts, openedGifts, selectedGiftId, isAnimating, handleSelectGift]).map(({
@@ -367,7 +326,8 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
               height,
               rotation,
               isCurrentlyAnimating,
-              isDisabled
+              isDisabled,
+              isOpened
             }) => (
               <group key={gift.id} position={[x, height, z]} rotation={[0, rotation, 0]}>
                 <GiftBox3D
@@ -376,6 +336,7 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
                   onClick={() => !isDisabled && handleSelectGift(gift.id)}
                   isAnimating={isCurrentlyAnimating}
                   isDisabled={isDisabled}
+                  isOpened={isOpened}
                 />
               </group>
             ))}

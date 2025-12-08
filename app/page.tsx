@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, memo, lazy, Suspense, useMemo } from 
 import { Navbar } from "@/components/navbar"
 import { WelcomeSection } from "@/components/welcome-section"
 import { GiftDetailPage } from "@/components/gift-detail-page"
-import { GiftQuizPage } from "@/components/gift-quiz-page"
+import { GiftReveal } from "@/components/gift-reveal"
 import { OpenedGiftsPage } from "@/components/opened-gifts-page"
 import { CountdownLock } from "@/components/countdown-lock"
+import { DailyNotes } from "@/components/daily-notes"
 import Snowfall from "@/components/snowfall"
 
 // Lazy load del componente 3D pesado
@@ -16,9 +17,10 @@ import { supabase } from "@/lib/supabase"
 
 export default function Home() {
   const [selectedGift, setSelectedGift] = useState<number | null>(null)
-  const [showQuiz, setShowQuiz] = useState(false)
+  const [showReveal, setShowReveal] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [showOpenedGifts, setShowOpenedGifts] = useState(false)
+  const [returnToOpenedGifts, setReturnToOpenedGifts] = useState(false) // Nuevo estado para controlar el retorno
   const [isUnlocked, setIsUnlocked] = useState(false)
   
   // Fecha objetivo: Lunes 8 de diciembre de 2024 (o el año actual)
@@ -45,29 +47,59 @@ export default function Home() {
   
   // Verificar si ya se puede acceder
   useEffect(() => {
-    const now = new Date()
-    if (now >= targetDate) {
+    // Si ya pasó la fecha objetivo, desbloquear inmediatamente
+    if (new Date() >= targetDate) {
       setIsUnlocked(true)
+    } else {
+      setIsUnlocked(false)
     }
   }, [targetDate])
+
+  // Helper para chequear disponibilidad por hora (Lima, UTC-5)
+  const isGiftTimeAvailable = useCallback((day: number) => {
+    // Obtener hora actual en Lima
+    const now = new Date()
+    const limaTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Lima" }))
+    const currentMonth = limaTime.getMonth() + 1 // 1-12
+    const currentDay = limaTime.getDate()
+    const currentHour = limaTime.getHours()
+
+    // Si no es diciembre, nada (excepto testing si se quisiera)
+    if (currentMonth !== 12) return false
+
+    // Si ya pasó el día, disponible
+    if (currentDay > day) return true
+
+    // Si es el mismo día, chequear hora (>= 16:00)
+    if (currentDay === day) {
+      return currentHour >= 16
+    }
+
+    // Si es antes, no
+    return false
+  }, [])
 
   // Función para verificar si ya se abrió un regalo hoy
   const canOpenGiftToday = (): boolean => {
     if (!lastGiftOpenedDate) return true
     
+    // Convertir fecha de apertura a hora Lima para comparar días correctamente
     const lastDate = new Date(lastGiftOpenedDate)
-    const today = new Date()
+    const lastDateLima = new Date(lastDate.toLocaleString("en-US", { timeZone: "America/Lima" }))
     
-    // Comparar año, mes y día (no hora)
-    const lastYear = lastDate.getFullYear()
-    const lastMonth = lastDate.getMonth()
-    const lastDay = lastDate.getDate()
+    const now = new Date()
+    const todayLima = new Date(now.toLocaleString("en-US", { timeZone: "America/Lima" }))
     
-    const todayYear = today.getFullYear()
-    const todayMonth = today.getMonth()
-    const todayDay = today.getDate()
+    // Comparar año, mes y día en zona horaria de Lima
+    const lastYear = lastDateLima.getFullYear()
+    const lastMonth = lastDateLima.getMonth()
+    const lastDay = lastDateLima.getDate()
     
-    // Si es el mismo día, no se puede abrir
+    const todayYear = todayLima.getFullYear()
+    const todayMonth = todayLima.getMonth()
+    const todayDay = todayLima.getDate()
+    
+    // Si es el mismo día, no se puede abrir otro
     if (lastYear === todayYear && lastMonth === todayMonth && lastDay === todayDay) {
       return false
     }
@@ -138,7 +170,7 @@ export default function Home() {
         setOpenedGifts(new Set())
         setLastGiftOpenedDate(null)
         setSelectedGift(null)
-        setShowQuiz(false)
+        setShowReveal(false)
         setIsAnimating(false)
       }
     } catch (error) {
@@ -163,10 +195,12 @@ export default function Home() {
       day: 8,
       dayName: "Lunes",
       title: "Primera Sorpresa",
-      description: "El comienzo de algo especial",
-      fullDescription:
-        "Esta es la primera de las sorpresas que preparé especialmente para ti. Cada día que pase te acercará más a tu día especial, y quiero que disfrutes cada momento de este camino juntos.",
-      image: "/gift-wrap-present-red.jpg",
+      description: "Un detalle pequeño pero lleno de cariño. Algo que vas a llevar cerquita siempre.",
+      fullDescription: "Un detalle pequeño pero lleno de cariño. Algo que vas a llevar cerquita siempre.",
+      specialNote: "Cuando estemos juntos, enciende las velitas conmigo y abre tu primera sorpresa.",
+      cardMessage: "Gracias por existir en mi vida.",
+      signature: "Con amor, de Johan para mi Ale.",
+      image: "/snoopy_calendario.png", // Placeholder temporal funcional
       color: "from-red-600 to-red-700",
       questions: [
         {
@@ -196,9 +230,12 @@ export default function Home() {
       day: 9,
       dayName: "Martes",
       title: "Segunda Sorpresa",
-      description: "Un detalle pensado en ti",
-      fullDescription: "Cada sorpresa que abres es un recordatorio de lo especial que eres para mí. Este regalo es una muestra de todo el cariño que siento por ti.",
-      image: "/luxury-gift-box.jpg",
+      description: "Un regalo que no se marchita y uno que brilla. Ambos pensados solo para ti.",
+      fullDescription: "Un regalo que no se marchita y uno que brilla. Ambos pensados solo para ti.",
+      specialNote: "Guárdame este momento: quiero entregártelo en persona.",
+      cardMessage: "Hoy también es un día bonito porque tú estás.",
+      signature: "Con amor, de Johan para mi Ale.",
+      image: "/snoopy_calendario.png", // Placeholder temporal funcional
       color: "from-red-700 to-red-800",
       questions: [
         {
@@ -228,9 +265,12 @@ export default function Home() {
       day: 10,
       dayName: "Miércoles",
       title: "Tercera Sorpresa",
-      description: "Cada día más cerca de tu día especial",
-      fullDescription: "Faltan muy pocos días para tu cumpleaños. Este regalo es un adelanto de toda la magia y el amor que te espera en tu día más especial.",
-      image: "/birthday-present-celebration.jpg",
+      description: "Un compañero suave que llega para recordarte lo mucho que te cuido.",
+      fullDescription: "Un compañero suave que llega para recordarte lo mucho que te cuido.",
+      specialNote: "Este te lo tengo que dar en brazos, no por pantalla.",
+      cardMessage: "Cada día a tu lado es un regalo para mí.",
+      signature: "Con amor, de Johan para mi Ale.",
+      image: "/snoopy_calendario.png", // Placeholder temporal funcional
       color: "from-red-500 to-red-600",
       questions: [
         {
@@ -260,9 +300,12 @@ export default function Home() {
       day: 11,
       dayName: "Jueves",
       title: "🎂 ¡Feliz Cumpleaños!",
-      description: "La sorpresa final para tu día más especial",
-      fullDescription: "¡Hoy es tu día! Este es el regalo final y el más especial de todos. Quiero que sepas lo mucho que te amo y lo agradecido que estoy de tenerte en mi vida. ¡Feliz cumpleaños, mi amor!",
-      image: "/birthday-cake-party-celebration.jpg",
+      description: "Hoy termina tu semana especial. Lo de aquí es algo que te acompañará cada día… y algo más que hará sonreír tu corazón.",
+      fullDescription: "Hoy termina tu semana especial. Lo de aquí es algo que te acompañará cada día… y algo más que hará sonreír tu corazón.",
+      specialNote: "Ábrelo conmigo. Prometo que este regalo habla por sí solo.",
+      cardMessage: "Feliz cumpleaños, mi amor. Que todos tus deseos se hagan realidad.",
+      signature: "Con todo mi amor, Johan para mi Ale.",
+      image: "/snoopy.jpg", // Placeholder temporal funcional (cumpleaños)
       color: "from-red-800 to-red-900",
       questions: [
         {
@@ -290,15 +333,19 @@ export default function Home() {
   ], [])
 
   const handleSelectGift = useCallback((giftId: number) => {
-    // Verificar si ya se abrió un regalo hoy (máximo 1 por día)
+    // 1. Verificar si ya se abrió un regalo hoy (máximo 1 por día)
+    // Nota: Si ya abrí el regalo 1 hoy, no puedo abrir el 2.
     if (!canOpenGiftToday()) {
+      // Opcional: Mostrar alerta "Vuelve mañana"
       return
     }
     
-    // Verificar que sea a partir del 8 de diciembre
-    const today = new Date()
-    const currentDay = today.getDate()
-    const currentMonth = today.getMonth() + 1
+    // 2. Verificar que sea a partir del 8 de diciembre
+    // Usamos la misma lógica de zona horaria
+    const now = new Date()
+    const limaTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Lima" }))
+    const currentMonth = limaTime.getMonth() + 1
+    const currentDay = limaTime.getDate()
     
     // Solo permitir abrir regalos a partir del 8 de diciembre
     if (currentMonth !== 12 || currentDay < 8) {
@@ -310,54 +357,60 @@ export default function Home() {
       return
     }
     
-    // Determinar qué regalo debe abrirse según el orden
-    // Primer regalo abierto = día 8, segundo = día 9, tercero = día 10, cuarto = día 11
+    // 3. Determinar qué regalo debe abrirse según el orden SECUENCIAL
+    // Primer regalo abierto = día 8, segundo = día 9, etc.
     const openedCount = openedGifts.size
     const giftOrder = [8, 9, 10, 11] // Orden de días que deben abrirse
-    const dayToOpen = giftOrder[openedCount]
     
-    // Si ya se abrieron todos los regalos, no hacer nada
+    // Si ya se abrieron todos, nada que hacer
     if (openedCount >= giftOrder.length) {
       return
     }
-    
-    // Buscar el regalo correspondiente al día que debe abrirse
+
+    // El regalo que toca abrir es el siguiente en la lista
+    const dayToOpen = giftOrder[openedCount]
     const giftToOpen = gifts.find(g => g.day === dayToOpen)
-    if (!giftToOpen) {
+    
+    if (!giftToOpen) return
+
+    // 4. Verificar si el regalo seleccionado es el que toca
+    // El usuario debe hacer click en CUALQUIER regalo para abrir el SIGUIENTE disponible
+    // O forzar a que haga click en el correcto. Por UX, mejor si hace click en el correcto.
+    // Pero si hace click en otro, podríamos redirigirlo o no hacer nada.
+    // Asumamos: Debe hacer click en el regalo correcto.
+    if (giftToOpen.id !== giftId) {
+      return
+    }
+
+    // 5. Verificar REGLA DE HORA (4 PM Lima) para el día del regalo
+    if (!isGiftTimeAvailable(giftToOpen.day)) {
+      // Aún no son las 4pm del día correspondiente
       return
     }
     
-    // Prevenir si el regalo que debe abrirse ya está abierto
+    // Prevenir si el regalo ya está abierto (doble check)
     if (openedGifts.has(giftToOpen.id)) {
       return
     }
     
-    // Mostrar el formulario de preguntas del regalo que debe abrirse (no el que se hizo clic)
+    // Mostrar el mensaje de revelación
     setSelectedGift(giftToOpen.id)
-    setShowQuiz(true)
+    setShowReveal(true)
     
-  }, [gifts, openedGifts, isAnimating, canOpenGiftToday])
+  }, [gifts, openedGifts, isAnimating, canOpenGiftToday, isGiftTimeAvailable])
 
-  const handleQuizSuccess = useCallback(async () => {
+  const handleReveal = useCallback(async () => {
     const giftId = selectedGift
     if (giftId === null) return
     
-    // Verificar nuevamente que se pueda abrir (por si acaso)
-    if (!canOpenGiftToday()) {
-      return
-    }
+    // Verificaciones de seguridad finales antes de guardar
+    if (!canOpenGiftToday()) return
     
-    // Verificar nuevamente que sea a partir del 8 de diciembre
-    const today = new Date()
-    const currentDay = today.getDate()
-    const currentMonth = today.getMonth() + 1
-    
-    if (currentMonth !== 12 || currentDay < 8) {
-      return
-    }
+    const gift = gifts.find(g => g.id === giftId)
+    if (gift && !isGiftTimeAvailable(gift.day)) return
     
     setIsAnimating(true)
-    setShowQuiz(false)
+    setShowReveal(false)
     
     // Guardar en Supabase
     const success = await openGift(giftId)
@@ -382,7 +435,7 @@ export default function Home() {
     setTimeout(() => {
       setIsAnimating(false)
     }, 1800)
-  }, [selectedGift, canOpenGiftToday])
+  }, [selectedGift, canOpenGiftToday, gifts, isGiftTimeAvailable])
 
   // Si se muestra la página de regalos abiertos
   if (showOpenedGifts) {
@@ -393,32 +446,32 @@ export default function Home() {
         onBack={() => setShowOpenedGifts(false)}
         onSelectGift={(giftId) => {
           setShowOpenedGifts(false)
+          setReturnToOpenedGifts(true) // Marcar que venimos de la lista de regalos abiertos
           // Si el regalo ya está abierto, mostrar directamente el detalle
           if (openedGifts.has(giftId)) {
             setSelectedGift(giftId)
-            setShowQuiz(false)
+            setShowReveal(false)
           } else {
-            // Si no está abierto, mostrar el quiz
+            // Si no está abierto, mostrar el mensaje de revelación
             setSelectedGift(giftId)
-            setShowQuiz(true)
+            setShowReveal(true)
           }
         }}
       />
     )
   }
 
-  // Si se muestra el formulario de preguntas
-  if (showQuiz && selectedGift !== null) {
+  // Si se muestra el mensaje de revelación
+  if (showReveal && selectedGift !== null) {
     const gift = gifts.find((g) => g.id === selectedGift)!
     return (
-      <GiftQuizPage
+      <GiftReveal
         gift={gift}
-        questions={gift.questions || []}
         onBack={() => {
-          setShowQuiz(false)
+          setShowReveal(false)
           setSelectedGift(null)
         }}
-        onSuccess={handleQuizSuccess}
+        onReveal={handleReveal}
         openedGiftsCount={openedGifts.size}
         totalGifts={gifts.length}
       />
@@ -432,6 +485,10 @@ export default function Home() {
         gift={gifts.find((g) => g.id === selectedGift)!} 
         onBack={() => {
           setSelectedGift(null)
+          if (returnToOpenedGifts) {
+            setShowOpenedGifts(true)
+            setReturnToOpenedGifts(false)
+          }
         }}
         openedGiftsCount={openedGifts.size}
         totalGifts={gifts.length}
@@ -458,9 +515,22 @@ export default function Home() {
         onShowOpenedGifts={() => setShowOpenedGifts(true)}
       />
       <div className="flex flex-col lg:flex-row h-[calc(100vh-60px)]">
-        <WelcomeSection openedGifts={openedGifts} gifts={gifts} />
-        <div className="w-full lg:w-3/5 h-[50vh] lg:h-full">
-          <Suspense fallback={<div className="w-full h-full flex items-center justify-center text-white">Cargando escena 3D...</div>}>
+        <div className="w-full lg:w-2/5 h-full overflow-y-auto scrollbar-hide">
+          <WelcomeSection openedGifts={openedGifts} gifts={gifts} />
+          {/* Sección de notitas especiales */}
+          <DailyNotes openedGifts={openedGifts} gifts={gifts} />
+        </div>
+        <div className="w-full lg:w-3/5 h-[60vh] lg:h-full">
+          <Suspense fallback={
+            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+              <div className="text-center space-y-4">
+                <div className="text-4xl animate-bounce">🎄</div>
+                <p className="text-white text-sm" style={{ fontFamily: 'monospace' }}>
+                  Preparando el árbol...
+                </p>
+              </div>
+            </div>
+          }>
             <ChristmasScene3D 
               gifts={gifts} 
               onSelectGift={handleSelectGift} 

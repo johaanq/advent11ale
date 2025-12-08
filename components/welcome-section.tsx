@@ -12,11 +12,25 @@ interface WelcomeSectionProps {
   gifts?: Gift[]
 }
 
-export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeSectionProps) {
+  export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeSectionProps) {
   const birthdayDate = new Date(2025, 11, 11)
-  const today = new Date()
-  const currentDay = today.getDate()
-  const currentMonth = today.getMonth() + 1
+  
+  // Usar hora de Lima para visualización consistente
+  const [limaDate, setLimaTime] = useState(new Date())
+  
+  useEffect(() => {
+    // Actualizar fecha/hora al montar y cada minuto
+    const updateTime = () => {
+      setLimaTime(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Lima" })))
+    }
+    updateTime()
+    const interval = setInterval(updateTime, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const currentDay = limaDate.getDate()
+  const currentMonth = limaDate.getMonth() + 1
+  const currentHour = limaDate.getHours()
   
   // Calcular qué regalos están disponibles (regalos del 8, 9, 10, 11 de diciembre)
   const availableGifts = [8, 9, 10, 11]
@@ -43,7 +57,7 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
   }, [])
 
   return (
-    <div className="w-full lg:w-2/5 flex items-start justify-start p-3 sm:p-4 lg:p-5 relative overflow-hidden h-full" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+    <div className="w-full flex items-start justify-start p-3 sm:p-4 lg:p-5 relative overflow-hidden min-h-screen" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
       {/* Decoración de fondo - Estrellas navideñas */}
       <div className="absolute inset-0 opacity-20">
         {stars.map((star, i) => (
@@ -219,9 +233,26 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                     const gift = giftsMap.get(day)
                     const isOpened = gift ? openedGifts.has(gift.id) : false
                     const hasGift = gift !== undefined
-                    const isAvailable = currentMonth === 12 && currentDay >= day
+                    
+                    // REGLAS REACTIVADAS:
+                    // 1. Mes debe ser Diciembre
+                    // 2. Si es el día exacto, debe ser >= 4 PM (16:00)
+                    // 3. Si ya pasó el día, siempre disponible
+                    let isTimeAvailable = false
+                    if (currentMonth === 12) {
+                      if (currentDay > day) {
+                        isTimeAvailable = true
+                      } else if (currentDay === day) {
+                        isTimeAvailable = currentHour >= 16
+                      }
+                    }
+                    
+                    const isAvailable = isTimeAvailable
                     const isGiftAvailable = hasGift && isAvailable
-                    const isTodayAvailable = hasGift && firstAvailableDay === day && !isOpened
+                    
+                    // Lógica para "Hoy Disponible":
+                    // Es hoy, es la hora, tiene regalo, NO está abierto, y es el PRIMER disponible en secuencia
+                    const isTodayAvailable = hasGift && isAvailable && !isOpened && firstAvailableDay === day
                     // Asignar un ícono diferente a cada día con regalo (días 8, 9, 10, 11)
                     // Día 8 = índice 0, Día 9 = índice 1, Día 10 = índice 2, Día 11 = índice 3
                     const iconIndex = hasGift && gift ? (gift.day - 8) : 0

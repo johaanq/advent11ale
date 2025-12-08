@@ -8,16 +8,20 @@ import * as THREE from "three"
 export function ChristmasTree() {
   const treeRef = useRef<Group>(null)
 
+  // Throttle: Solo actualizar rotación cada 3 frames
+  const frameCountRef = useRef(0)
+  
   useFrame((state, delta) => {
-    if (treeRef.current) {
-      treeRef.current.rotation.y += 0.0003 * delta * 60 // Frame-rate independent
+    frameCountRef.current++
+    if (frameCountRef.current % 3 === 0 && treeRef.current) {
+      treeRef.current.rotation.y += 0.0003 * delta * 60 * 3 // Compensar el throttle
     }
   })
 
   // Crear domo con ondulación y offset angular para cada capa
   const createDomeTier = (radius: number, heightRatio: number = 0.5, angleOffset: number = 0) => {
-    // Crear domo (hemisferio superior de esfera) - Reducido de 64 a 32 segmentos para mejor rendimiento
-    const geometry = new THREE.SphereGeometry(radius, 32, 16, 0, Math.PI * 2, 0, Math.PI * heightRatio)
+    // Crear domo (hemisferio superior de esfera) - Súper optimizado: 16 segmentos
+    const geometry = new THREE.SphereGeometry(radius, 16, 8, 0, Math.PI * 2, 0, Math.PI * heightRatio)
     
     const positionAttribute = geometry.attributes.position
     const vertices = []
@@ -254,15 +258,19 @@ export function ChristmasTree() {
               <meshStandardMaterial 
                 color={lightColor} 
                 emissive={lightColor}
-                emissiveIntensity={3.0}
+                emissiveIntensity={4.0} // Aumentado para compensar la falta de pointLight individual
                 transparent
                 opacity={0.98}
               />
             </mesh>
-            <pointLight position={[0, -0.015, 0]} intensity={0.5} distance={1.4} color={lightColor} />
+            {/* Optimización: Eliminadas 48 pointLights individuales que causaban congelamiento al inicio.
+                El material emisivo ya da el efecto de luz brillante sin el costo de rendimiento excesivo. */}
           </group>
         )
       })}
+      
+      {/* Luz central para simular el brillo conjunto del árbol (mucho más eficiente que 48 luces) */}
+      <pointLight position={[0, 2.5, 0]} intensity={2.0} distance={5} color="#FFD700" decay={2} />
 
       {/* ORNAMENTOS ESFÉRICOS - Más cantidad sin exagerar */}
       {[
