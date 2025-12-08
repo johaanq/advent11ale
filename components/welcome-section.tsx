@@ -236,7 +236,7 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                     // REGLAS REACTIVADAS:
                     // 1. Mes debe ser Diciembre
                     // 2. Si es el día exacto, verificar hora según el día:
-                    //    - Día 8: >= 6:30 PM (18:30)
+                    //    - Día 8: >= 6:00 PM (18:00)
                     //    - Días 9, 10, 11: >= 4 PM (16:00)
                     // 3. Si ya pasó el día, siempre disponible
                     let isTimeAvailable = false
@@ -244,10 +244,9 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                       if (currentDay > day) {
                         isTimeAvailable = true
                       } else if (currentDay === day) {
-                        // Día 8 (lunes): disponible desde las 6:30 PM
+                        // Día 8 (lunes): disponible desde las 6:00 PM
                         if (day === 8) {
-                          const currentMinute = limaDate.getMinutes()
-                          isTimeAvailable = currentHour > 18 || (currentHour === 18 && currentMinute >= 30)
+                          isTimeAvailable = currentHour >= 18
                         } else {
                           // Días 9, 10, 11: disponible desde las 4 PM
                           isTimeAvailable = currentHour >= 16
