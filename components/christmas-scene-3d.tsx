@@ -21,17 +21,17 @@ function PictureFrameContent({ position }: { position: [number, number, number] 
   
   // Configurar la textura correctamente para mejor calidad sin rayas
   useEffect(() => {
-    if (texture) {
-      texture.flipY = false
-      texture.colorSpace = THREE.SRGBColorSpace
-      texture.minFilter = THREE.LinearFilter
-      texture.magFilter = THREE.LinearFilter
-      texture.generateMipmaps = false
-      texture.anisotropy = 16
-      texture.wrapS = THREE.ClampToEdgeWrapping
-      texture.wrapT = THREE.ClampToEdgeWrapping
-      texture.needsUpdate = true
-    }
+  if (texture) {
+    texture.flipY = false
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.minFilter = THREE.LinearFilter
+    texture.magFilter = THREE.LinearFilter
+    texture.generateMipmaps = false
+    texture.anisotropy = 16
+    texture.wrapS = THREE.ClampToEdgeWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
+    texture.needsUpdate = true
+  }
   }, [texture])
 
   return (
@@ -111,7 +111,7 @@ export function ChristmasScene3D({ gifts, onSelectGift, isAnimating, openedGifts
     
     const giftToOpen = gifts.find(g => g.id === id)
     if (!giftToOpen) return
-
+    
     // Prevenir si el regalo que debe abrirse ya está abierto
     if (openedGifts.has(giftToOpen.id)) {
       return

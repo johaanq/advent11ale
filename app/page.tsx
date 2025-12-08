@@ -40,7 +40,7 @@ export default function Home() {
   useEffect(() => {
     // Si ya pasó la fecha objetivo, desbloquear inmediatamente
     if (new Date() >= targetDate) {
-      setIsUnlocked(true)
+    setIsUnlocked(true)
     } else {
       setIsUnlocked(false)
     }
@@ -54,6 +54,7 @@ export default function Home() {
     const currentMonth = limaTime.getMonth() + 1 // 1-12
     const currentDay = limaTime.getDate()
     const currentHour = limaTime.getHours()
+    const currentMinute = limaTime.getMinutes()
 
     // Si no es diciembre, nada (excepto testing si se quisiera)
     if (currentMonth !== 12) return false
@@ -61,8 +62,13 @@ export default function Home() {
     // Si ya pasó el día, disponible
     if (currentDay > day) return true
 
-    // Si es el mismo día, chequear hora (>= 16:00)
+    // Si es el mismo día, chequear hora
     if (currentDay === day) {
+      // Día 8 (lunes): disponible desde las 6:30 PM (18:30)
+      if (day === 8) {
+        return currentHour > 18 || (currentHour === 18 && currentMinute >= 30)
+      }
+      // Días 9, 10, 11: disponible desde las 4 PM (16:00)
       return currentHour >= 16
     }
 
@@ -357,7 +363,7 @@ export default function Home() {
     if (openedCount >= giftOrder.length) {
       return
     }
-
+    
     // El regalo que toca abrir es el siguiente en la lista
     const dayToOpen = giftOrder[openedCount]
     const giftToOpen = gifts.find(g => g.day === dayToOpen)

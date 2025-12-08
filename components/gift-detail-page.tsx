@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Navbar } from "@/components/navbar"
-import { ChevronLeft, Heart, MessageCircle, Send } from "lucide-react"
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, Send } from "lucide-react"
 import { 
   getLikeStatus, 
   toggleLike, 
@@ -25,6 +25,47 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [touchStart, setTouchStart] = useState(0)
+  const [touchEnd, setTouchEnd] = useState(0)
+
+  // Generar URLs de las 3 imágenes del carrusel
+  const carouselImages = [
+    `/regalo${gift.id}_1.jpg`,
+    `/regalo${gift.id}_2.jpg`,
+    `/regalo${gift.id}_3.jpg`
+  ]
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length)
+  }
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+    
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+
+    if (isLeftSwipe) {
+      nextImage()
+    }
+    if (isRightSwipe) {
+      prevImage()
+    }
+  }
 
   // Cargar estado inicial
   useEffect(() => {
@@ -117,17 +158,72 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
               </button>
             </div>
 
-            {/* Imagen del regalo con manejo de error */}
-            <div className="relative aspect-square bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center overflow-hidden">
-              <img 
-                src={gift.image || "/snoopy_calendario.png"} 
-                alt={gift.title} 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = "/snoopy_calendario.png" // Fallback seguro
-                  e.currentTarget.onerror = null // Prevenir bucle infinito
-                }}
-              />
+            {/* Carrusel de imágenes del regalo */}
+            <div 
+              className="relative aspect-square bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center overflow-hidden"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Imágenes del carrusel */}
+              <div className="relative w-full h-full">
+                {carouselImages.map((imageSrc, index) => (
+                  <div
+                    key={index}
+                    className={`absolute inset-0 transition-opacity duration-500 ${
+                      index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
+                    <img 
+                      src={imageSrc} 
+                      alt={`${gift.title} - Foto ${index + 1}`} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        e.currentTarget.src = "/snoopy_calendario.png"
+                        e.currentTarget.onerror = null
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Botones de navegación */}
+              {carouselImages.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
+                    aria-label="Imagen anterior"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
+                    aria-label="Siguiente imagen"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+
+              {/* Indicadores de puntos */}
+              {carouselImages.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                  {carouselImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`transition-all rounded-full ${
+                        index === currentImageIndex
+                          ? 'w-2.5 h-2.5 bg-white'
+                          : 'w-2 h-2 bg-white/50 hover:bg-white/75'
+                      }`}
+                      aria-label={`Ir a imagen ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Acciones (like, comentar) */}

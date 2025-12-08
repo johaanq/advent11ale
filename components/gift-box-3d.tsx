@@ -66,7 +66,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
        }
        return
     }
-
+    
     // Para animaciones normales (no click), solo actualizar cada 2 frames
     if (!isAnimating && frameCountRef.current % 2 !== 0) return
 
@@ -257,7 +257,7 @@ export function GiftBox3D({ gift, position, onClick, isAnimating = false, isDisa
           <mesh position={[0, -h / 2 + 0.02, 0]}>
             <boxGeometry args={[w, 0.04, d]} />
             <meshStandardMaterial color={style.box} roughness={0.22} metalness={0.18} />
-          </mesh>
+        </mesh>
           
           {/* FONDO INTERIOR OSCURO (Sombra falsa para dar profundidad) */}
           <mesh position={[0, -h / 2 + 0.045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
