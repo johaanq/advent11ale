@@ -498,20 +498,20 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+    <main className="min-h-screen lg:overflow-hidden" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
       <Snowfall />
       <Navbar 
         openedGiftsCount={openedGifts.size} 
         totalGifts={gifts.length}
         onShowOpenedGifts={() => setShowOpenedGifts(true)}
       />
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-60px)]">
-        <div className="w-full lg:w-2/5 h-full overflow-y-auto scrollbar-hide">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-60px)]">
+        <div className="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto scrollbar-hide order-2 lg:order-1">
           <WelcomeSection openedGifts={openedGifts} gifts={gifts} />
           {/* Sección de notitas especiales */}
           <DailyNotes openedGifts={openedGifts} gifts={gifts} />
         </div>
-        <div className="w-full lg:w-3/5 h-[60vh] lg:h-full">
+        <div className="w-full lg:w-3/5 h-[50vh] lg:h-full order-1 lg:order-2">
           <Suspense fallback={
             <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
               <div className="text-center space-y-4">

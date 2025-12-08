@@ -97,8 +97,7 @@ export function GiftReveal({
           {/* Contenedor del mensaje y deslizable */}
           <div 
             ref={containerRef}
-            className="relative overflow-hidden rounded-sm"
-            style={{ height: '70vh', minHeight: '500px' }}
+            className="relative overflow-hidden rounded-sm min-h-[400px] sm:min-h-[500px] h-[70vh]"
           >
             {/* Vista previa del regalo detrás (Fondo) */}
             <div 

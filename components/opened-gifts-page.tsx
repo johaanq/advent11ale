@@ -32,7 +32,7 @@ export function OpenedGiftsPage({ openedGifts, gifts, onBack, onSelectGift }: Op
       <Snowfall />
       <Navbar openedGiftsCount={openedGifts.size} totalGifts={gifts.length} />
       
-      <div className="min-h-[calc(100vh-60px)] p-6 lg:p-10">
+      <div className="min-h-[calc(100vh-60px)] p-3 sm:p-6 lg:p-10">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">

@@ -57,7 +57,7 @@ interface WelcomeSectionProps {
   }, [])
 
   return (
-    <div className="w-full flex items-start justify-start p-3 sm:p-4 lg:p-5 relative overflow-hidden min-h-screen" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+    <div className="w-full flex items-start justify-start p-3 sm:p-4 lg:p-5 relative overflow-hidden lg:min-h-screen" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
       {/* Decoración de fondo - Estrellas navideñas */}
       <div className="absolute inset-0 opacity-20">
         {stars.map((star, i) => (
@@ -112,9 +112,9 @@ interface WelcomeSectionProps {
         {/* Contenedor principal - Todo centrado */}
         <div className="w-full max-w-lg mx-auto space-y-4.5">
           {/* Título principal - Arriba centrado */}
-          <div className="text-center space-y-2.5">
+          <div className="text-center space-y-2">
             <h1 
-              className="text-3xl lg:text-4xl font-bold text-white leading-tight"
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight"
               style={{ 
                 fontFamily: 'monospace',
                 letterSpacing: '0.05em',
@@ -130,7 +130,7 @@ interface WelcomeSectionProps {
             <div className="flex items-center justify-center gap-2 max-w-xs mx-auto">
               <div className="h-px bg-white/30 flex-1" style={{ imageRendering: 'pixelated' }}></div>
               <span 
-                className="text-xs text-white/70 font-medium px-2"
+                className="text-[10px] sm:text-xs text-white/70 font-medium px-2"
                 style={{ 
                   fontFamily: 'monospace',
                   textShadow: '1px 1px 0px rgba(0,0,0,0.4)',
@@ -144,7 +144,7 @@ interface WelcomeSectionProps {
             
             {/* Mensaje personalizado - Solo texto con separador */}
             <p 
-              className="text-white/85 text-sm lg:text-base font-medium leading-relaxed max-w-lg mx-auto px-4"
+              className="text-white/85 text-xs sm:text-sm lg:text-base font-medium leading-relaxed max-w-lg mx-auto px-2 sm:px-4"
               style={{ 
                 fontFamily: 'monospace',
                 textShadow: '1px 1px 0px rgba(0,0,0,0.4)',
@@ -157,7 +157,7 @@ interface WelcomeSectionProps {
           </div>
 
           {/* Calendario Navideño - Centrado */}
-          <div className="relative w-full max-w-sm mx-auto">
+          <div className="relative w-full max-w-[280px] sm:max-w-sm mx-auto">
               {/* Contenedor unificado para imagen y calendario */}
               <div className="relative">
               {/* Imagen de Snoopy en la casa - más grande y pegada al calendario */}
@@ -165,9 +165,8 @@ interface WelcomeSectionProps {
                 <img 
                   src="/snoopy_calendario.png" 
                   alt="Snoopy en su casa navideña" 
-                  className="max-w-full h-auto"
+                  className="max-w-full h-auto max-h-[140px] sm:max-h-[190px]"
                   style={{ 
-                    maxHeight: '190px',
                     imageRendering: 'pixelated',
                     objectFit: 'contain',
                     marginBottom: '-2px' // Pegar visualmente al calendario

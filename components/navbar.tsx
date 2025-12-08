@@ -37,12 +37,12 @@ export const Navbar = memo(function Navbar({ openedGiftsCount = 0, totalGifts = 
 
   return (
     <nav 
-      className="w-full px-4 py-3 z-50 relative border-b border-white/30"
+      className="w-full px-2 py-2 sm:px-4 sm:py-3 z-50 relative border-b border-white/30"
       style={{ 
         backgroundColor: 'lab(20 46.5 22.89 / 1)'
       }}
     >
-      <div className="flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto gap-2 sm:gap-0">
+      <div className="flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto gap-1 sm:gap-0">
         {/* Lado izquierdo */}
         <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 border-r-0 sm:border-r border-white/30 pr-0 sm:pr-4 lg:pr-6 w-full sm:w-auto justify-between sm:justify-start">
           {/* Fecha de hoy - Ocultar en móvil muy pequeño */}
