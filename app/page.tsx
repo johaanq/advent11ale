@@ -67,7 +67,11 @@ export default function Home() {
       if (day === 8) {
         return currentHour >= 18
       }
-      // Días 9, 10, 11: disponible desde las 4 PM (16:00)
+      // Día 9 (martes): disponible desde las 5:00 PM (17:00)
+      if (day === 9) {
+        return currentHour >= 17
+      }
+      // Días 10, 11: disponible desde las 4 PM (16:00)
       return currentHour >= 16
     }
 

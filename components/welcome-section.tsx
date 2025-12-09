@@ -237,7 +237,8 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                     // 1. Mes debe ser Diciembre
                     // 2. Si es el día exacto, verificar hora según el día:
                     //    - Día 8: >= 6:00 PM (18:00)
-                    //    - Días 9, 10, 11: >= 4 PM (16:00)
+                    //    - Día 9: >= 5:00 PM (17:00)
+                    //    - Días 10, 11: >= 4 PM (16:00)
                     // 3. Si ya pasó el día, siempre disponible
                     let isTimeAvailable = false
                     if (currentMonth === 12) {
@@ -247,8 +248,11 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                         // Día 8 (lunes): disponible desde las 6:00 PM
                         if (day === 8) {
                           isTimeAvailable = currentHour >= 18
+                        } else if (day === 9) {
+                          // Día 9 (martes): disponible desde las 5:00 PM
+                          isTimeAvailable = currentHour >= 17
                         } else {
-                          // Días 9, 10, 11: disponible desde las 4 PM
+                          // Días 10, 11: disponible desde las 4 PM
                           isTimeAvailable = currentHour >= 16
                         }
                       }

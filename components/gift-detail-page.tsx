@@ -29,12 +29,17 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
 
-  // Generar URLs de las 3 imágenes del carrusel
-  const carouselImages = [
-    `/regalo${gift.id}_1.jpg`,
-    `/regalo${gift.id}_2.jpg`,
-    `/regalo${gift.id}_3.jpg`
-  ]
+  // Generar URLs de las imágenes del carrusel (2 para regalo 2, 3 para los demás)
+  const carouselImages = gift.id === 2 
+    ? [
+        `/regalo${gift.id}_1.jpg`,
+        `/regalo${gift.id}_2.jpg`
+      ]
+    : [
+        `/regalo${gift.id}_1.jpg`,
+        `/regalo${gift.id}_2.jpg`,
+        `/regalo${gift.id}_3.jpg`
+      ]
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length)
