@@ -305,7 +305,7 @@ export default function Home() {
       specialNote: "Ábrelo conmigo. Prometo que este regalo habla por sí solo.",
       cardMessage: "Feliz cumpleaños, mi amor. Que todos tus deseos se hagan realidad.",
       signature: "Con todo mi amor, Johan para mi Ale.",
-      image: "/snoopy.jpg", // Placeholder temporal funcional (cumpleaños)
+      image: "/regalo4_1.jpg", // Primera imagen del regalo 4
       color: "from-red-800 to-red-900",
       questions: [
         {

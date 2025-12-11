@@ -166,68 +166,83 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
             {/* Carrusel de imágenes del regalo */}
             <div 
               className="relative aspect-square bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center overflow-hidden"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onTouchStart={gift.id !== 3 ? handleTouchStart : undefined}
+              onTouchMove={gift.id !== 3 ? handleTouchMove : undefined}
+              onTouchEnd={gift.id !== 3 ? handleTouchEnd : undefined}
             >
-              {/* Imágenes del carrusel */}
-              <div className="relative w-full h-full">
-                {carouselImages.map((imageSrc, index) => (
-                  <div
-                    key={index}
-                    className={`absolute inset-0 transition-opacity duration-500 ${
-                      index === currentImageIndex ? 'opacity-100' : 'opacity-0'
-                    }`}
-                  >
-                    <img 
-                      src={imageSrc} 
-                      alt={`${gift.title} - Foto ${index + 1}`} 
-                      className="w-full h-full object-cover" 
-                      onError={(e) => {
-                        e.currentTarget.src = "/snoopy_calendario.png"
-                        e.currentTarget.onerror = null
-                      }}
-                    />
+              {gift.id === 3 ? (
+                /* Estado de carga para el regalo 3 */
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  <div className="relative w-16 h-16">
+                    <div className="absolute inset-0 border-4 border-amber-400/30 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-transparent border-t-amber-400 rounded-full animate-spin"></div>
                   </div>
-                ))}
-              </div>
-
-              {/* Botones de navegación */}
-              {carouselImages.length > 1 && (
-                <>
-                  <button
-                    onClick={prevImage}
-                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
-                    aria-label="Imagen anterior"
-                  >
-                    <ChevronLeft size={24} />
-                  </button>
-                  <button
-                    onClick={nextImage}
-                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
-                    aria-label="Siguiente imagen"
-                  >
-                    <ChevronRight size={24} />
-                  </button>
-                </>
-              )}
-
-              {/* Indicadores de puntos */}
-              {carouselImages.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                  {carouselImages.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentImageIndex(index)}
-                      className={`transition-all rounded-full ${
-                        index === currentImageIndex
-                          ? 'w-2.5 h-2.5 bg-white'
-                          : 'w-2 h-2 bg-white/50 hover:bg-white/75'
-                      }`}
-                      aria-label={`Ir a imagen ${index + 1}`}
-                    />
-                  ))}
+                  <p className="text-amber-200 text-sm sm:text-base" style={{ fontFamily: 'monospace' }}>
+                    Cargando fotos...
+                  </p>
                 </div>
+              ) : (
+                <>
+                  {/* Imágenes del carrusel */}
+                  <div className="relative w-full h-full">
+                    {carouselImages.map((imageSrc, index) => (
+                      <div
+                        key={index}
+                        className={`absolute inset-0 transition-opacity duration-500 ${
+                          index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      >
+                        <img 
+                          src={imageSrc} 
+                          alt={`${gift.title} - Foto ${index + 1}`} 
+                          className="w-full h-full object-cover" 
+                          onError={(e) => {
+                            e.currentTarget.src = "/snoopy_calendario.png"
+                            e.currentTarget.onerror = null
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Botones de navegación */}
+                  {carouselImages.length > 1 && (
+                    <>
+                      <button
+                        onClick={prevImage}
+                        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
+                        aria-label="Imagen anterior"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                      <button
+                        onClick={nextImage}
+                        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all z-10"
+                        aria-label="Siguiente imagen"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    </>
+                  )}
+
+                  {/* Indicadores de puntos */}
+                  {carouselImages.length > 1 && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                      {carouselImages.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`transition-all rounded-full ${
+                            index === currentImageIndex
+                              ? 'w-2.5 h-2.5 bg-white'
+                              : 'w-2 h-2 bg-white/50 hover:bg-white/75'
+                          }`}
+                          aria-label={`Ir a imagen ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
