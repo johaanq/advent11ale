@@ -1,192 +1,157 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 
 interface DailyNotesProps {
   openedGifts: Set<number>
-  gifts: any[]
+  gifts: { id: number; day: number }[]
 }
+
+// Notitas por día (4 por cada día)
+const NOTES_BY_DAY: Record<number, string[]> = {
+  8: [
+    "Gracias por existir en mi vida.",
+    "Cada momento contigo es un regalo.",
+    "Hoy comienza algo especial para ti.",
+    "Con amor, de Johan para mi Ale.",
+  ],
+  9: [
+    "Hoy también es un día bonito porque tú estás.",
+    "Tu sonrisa ilumina mis días.",
+    "Eres mi persona favorita en el mundo.",
+    "Con amor, de Johan para mi Ale.",
+  ],
+  10: [
+    "Cada día a tu lado es un regalo para mí.",
+    "Contigo todo es mejor.",
+    "Gracias por llenar mi vida de alegría.",
+    "Con amor, de Johan para mi Ale.",
+  ],
+  11: [
+    "Feliz cumpleaños, mi amor.",
+    "Hoy celebro que existes.",
+    "Eres lo mejor que me ha pasado.",
+    "Te amo más de lo que las palabras pueden expresar.",
+  ],
+}
+
+// Leve rotación estable por notita
+const noteRotation = (i: number) => (((i * 37) % 7) - 3) * 0.6
 
 export function DailyNotes({ openedGifts, gifts }: DailyNotesProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [visibleNoteIndices, setVisibleNoteIndices] = useState<Set<number>>(new Set())
   const observerRef = useRef<IntersectionObserver | null>(null)
-
-  // Notitas por día (4 por cada día)
-  const notesByDay: Record<number, string[]> = {
-    8: [
-      "Gracias por existir en mi vida.",
-      "Cada momento contigo es un regalo.",
-      "Hoy comienza algo especial para ti.",
-      "Con amor, de Johan para mi Ale."
-    ],
-    9: [
-      "Hoy también es un día bonito porque tú estás.",
-      "Tu sonrisa ilumina mis días.",
-      "Eres mi persona favorita en el mundo.",
-      "Con amor, de Johan para mi Ale."
-    ],
-    10: [
-      "Cada día a tu lado es un regalo para mí.",
-      "Contigo todo es mejor.",
-      "Gracias por llenar mi vida de alegría.",
-      "Con amor, de Johan para mi Ale."
-    ],
-    11: [
-      "Feliz cumpleaños, mi amor.",
-      "Hoy celebro que existes.",
-      "Eres lo mejor que me ha pasado.",
-      "Te amo más de lo que las palabras pueden expresar."
-    ]
-  }
+  const nodesRef = useRef<Map<number, HTMLElement>>(new Map())
 
   useEffect(() => {
-    // Mostrar después de un pequeño delay para mejor UX
-    const timer = setTimeout(() => {
-      setIsVisible(true)
-    }, 300)
+    const timer = setTimeout(() => setIsVisible(true), 300)
     return () => clearTimeout(timer)
   }, [])
 
-  // Intersection Observer para detectar cuando las notitas entran/salen del viewport
+  // Intersection Observer: las notitas aparecen al entrar en pantalla
   useEffect(() => {
-    observerRef.current = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          const index = parseInt(entry.target.getAttribute('data-note-index') || '0')
-          
-          if (entry.isIntersecting) {
-            // La notita entró al viewport - agregar a visibles
-            setVisibleNoteIndices(prev => new Set([...prev, index]))
-          } else {
-            // La notita salió del viewport - remover de visibles
-            setVisibleNoteIndices(prev => {
-              const newSet = new Set(prev)
-              newSet.delete(index)
-              return newSet
-            })
-          }
+        setVisibleNoteIndices((prev) => {
+          const next = new Set(prev)
+          entries.forEach((entry) => {
+            const index = Number((entry.target as HTMLElement).dataset.noteIndex ?? 0)
+            if (entry.isIntersecting) next.add(index)
+            else next.delete(index)
+          })
+          return next
         })
       },
-      {
-        threshold: 0.3, // Activar cuando el 30% de la notita es visible
-        rootMargin: '-50px' // Margen para activar un poco antes/después
-      }
+      { threshold: 0.3, rootMargin: "-40px" }
     )
+    observerRef.current = observer
+    nodesRef.current.forEach((node) => observer.observe(node))
+    return () => observer.disconnect()
+  }, [])
 
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-      }
+  const registerNode = useCallback((index: number, node: HTMLElement | null) => {
+    const prev = nodesRef.current.get(index)
+    if (prev && prev !== node) observerRef.current?.unobserve(prev)
+    if (node) {
+      nodesRef.current.set(index, node)
+      observerRef.current?.observe(node)
+    } else {
+      nodesRef.current.delete(index)
     }
   }, [])
 
-  // Observar cada notita cuando se renderizan
-  useEffect(() => {
-    const noteElements = document.querySelectorAll('[data-note-index]')
-    
-    noteElements.forEach((element) => {
-      if (observerRef.current) {
-        observerRef.current.observe(element)
-      }
-    })
-
-    return () => {
-      noteElements.forEach((element) => {
-        if (observerRef.current) {
-          observerRef.current.unobserve(element)
-        }
-      })
-    }
-  }, [openedGifts])
-
-  // Obtener las notitas según los regalos abiertos
-  const getVisibleNotes = () => {
+  const visibleNotes = useMemo(() => {
     const notes: string[] = []
-    
-    // Ordenar los regalos por día
-    const sortedGifts = [...gifts].sort((a, b) => a.day - b.day)
-    
-    sortedGifts.forEach(gift => {
-      if (openedGifts.has(gift.id)) {
-        const dayNotes = notesByDay[gift.day] || []
-        notes.push(...dayNotes)
-      }
-    })
-    
+    ;[...gifts]
+      .sort((a, b) => a.day - b.day)
+      .forEach((gift) => {
+        if (openedGifts.has(gift.id)) notes.push(...(NOTES_BY_DAY[gift.day] || []))
+      })
     return notes
-  }
+  }, [gifts, openedGifts])
 
-  const visibleNotes = getVisibleNotes()
-
-  if (visibleNotes.length === 0) {
-    return null
-  }
+  if (visibleNotes.length === 0) return null
 
   return (
-    <div 
-      className={`w-full transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
-      style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}
+    <section
+      className={`w-full bg-wine transition-opacity duration-700 ${isVisible ? "opacity-100" : "opacity-0"}`}
+      aria-label="Notitas"
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Título de la sección */}
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 
-            className="text-xl sm:text-2xl font-bold text-amber-300 mb-3"
-            style={{ 
-              fontFamily: 'monospace',
-              textShadow: '2px 2px 0px rgba(0,0,0,0.5)',
-              letterSpacing: '0.05em'
-            }}
-          >
+        <div className="text-center mb-10 sm:mb-14">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold text-amber-300 mb-3 tracking-wide text-gold-glow">
             Notitas
           </h2>
-          <div className="h-px bg-amber-400/30 max-w-xs mx-auto"></div>
+          <div className="gold-divider max-w-xs mx-auto" />
         </div>
 
-        {/* Notitas con animación que se reinicia al scrollear */}
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-7 sm:space-y-9">
           {visibleNotes.map((note, index) => {
             const isNoteVisible = visibleNoteIndices.has(index)
             return (
               <div
                 key={index}
+                ref={(node) => registerNode(index, node)}
                 data-note-index={index}
-                className={`text-center transition-all duration-600 ${
-                  isNoteVisible ? 'animate-fadeIn opacity-100' : 'opacity-0'
-                }`}
+                className={`text-center ${isNoteVisible ? "animate-fadeIn" : "opacity-0"}`}
               >
-                <p 
-                  className="text-white/90 text-sm sm:text-base lg:text-lg italic leading-relaxed max-w-md mx-auto px-4"
-                  style={{ 
-                    fontFamily: 'monospace',
-                    textShadow: '1px 1px 0px rgba(0,0,0,0.4)'
+                <div
+                  className="relative mx-auto max-w-sm rounded-[3px] px-6 pt-6 pb-5"
+                  style={{
+                    rotate: `${noteRotation(index)}deg`,
+                    background: "linear-gradient(170deg, #fff8ec 0%, #f6e7cf 100%)",
+                    boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset, 0 10px 20px -8px rgba(0,0,0,0.55)",
                   }}
                 >
-                  "{note}"
-                </p>
-                
-                {/* Separador decorativo */}
-                {index < visibleNotes.length - 1 && (
-                  <div className="mt-6 flex items-center justify-center gap-2">
-                    <div className="w-8 h-px bg-amber-400/20"></div>
-                    <span className="text-amber-400/40 text-xs">❤</span>
-                    <div className="w-8 h-px bg-amber-400/20"></div>
-                  </div>
-                )}
+                  {/* Cinta adhesiva */}
+                  <span
+                    className="absolute -top-2.5 left-1/2 h-5 w-16 -translate-x-1/2 rounded-[2px]"
+                    style={{
+                      rotate: `${-noteRotation(index) * 2}deg`,
+                      background: "rgba(253, 230, 138, 0.65)",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+                    }}
+                    aria-hidden
+                  />
+                  <p className="text-[#5b1a1f] text-sm sm:text-base italic leading-relaxed">“{note}”</p>
+                  <span className="mt-2 block text-[10px] text-rose-700/60" aria-hidden>
+                    ❤
+                  </span>
+                </div>
               </div>
             )
           })}
         </div>
 
         {/* Decoración final */}
-        <div className="mt-12 pt-8 flex justify-center gap-3 text-amber-400/30 text-sm border-t border-amber-400/10">
+        <div className="mt-12 pt-8 flex justify-center gap-3 text-amber-400/40 text-sm">
           <span>✦</span>
           <span>✦</span>
           <span>✦</span>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
-

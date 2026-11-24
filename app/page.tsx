@@ -332,6 +332,18 @@ export default function Home() {
     },
   ], [])
 
+  // Regalo que toca abrir ahora mismo (para resaltarlo en el árbol)
+  const highlightGiftId = useMemo(() => {
+    if (!isHydrated) return null
+    const giftOrder = [8, 9, 10, 11]
+    const dayToOpen = giftOrder[openedGifts.size]
+    if (dayToOpen === undefined) return null
+    const next = gifts.find(g => g.day === dayToOpen)
+    if (!next || !isGiftTimeAvailable(next.day) || !canOpenGiftToday()) return null
+    return next.id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHydrated, openedGifts, gifts, isGiftTimeAvailable, lastGiftOpenedDate])
+
   const handleSelectGift = useCallback((giftId: number) => {
     // 1. Verificar si ya se abrió un regalo hoy (máximo 1 por día)
     // Nota: Si ya abrí el regalo 1 hoy, no puedo abrir el 2.
@@ -507,7 +519,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen lg:overflow-hidden" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+    <main className="min-h-screen lg:overflow-hidden bg-wine animate-page-in">
       <Snowfall />
       <Navbar 
         openedGiftsCount={openedGifts.size} 
@@ -522,10 +534,14 @@ export default function Home() {
         </div>
         <div className="w-full lg:w-3/5 h-[50vh] lg:h-full order-1 lg:order-2">
           <Suspense fallback={
-            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+            <div className="w-full h-full flex items-center justify-center bg-wine-gradient">
               <div className="text-center space-y-4">
-                <div className="text-4xl animate-bounce">🎄</div>
-                <p className="text-white text-sm" style={{ fontFamily: 'monospace' }}>
+                <div className="relative mx-auto w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-2 border-amber-300/20" />
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-amber-300 animate-spin" />
+                  <div className="absolute inset-0 flex items-center justify-center text-3xl">🎄</div>
+                </div>
+                <p className="font-display text-amber-100/90 text-sm tracking-wide text-shadow-soft">
                   Preparando el árbol...
                 </p>
               </div>
@@ -535,7 +551,8 @@ export default function Home() {
               gifts={gifts} 
               onSelectGift={handleSelectGift} 
               isAnimating={isAnimating} 
-              openedGifts={openedGifts} 
+              openedGifts={openedGifts}
+              highlightGiftId={highlightGiftId}
             />
           </Suspense>
         </div>

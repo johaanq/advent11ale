@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import Snowfall from "@/components/snowfall"
 
 interface CountdownLockProps {
@@ -8,19 +8,20 @@ interface CountdownLockProps {
   onUnlock: () => void
 }
 
+const UNITS = [
+  { key: "days", label: "Días" },
+  { key: "hours", label: "Horas" },
+  { key: "minutes", label: "Minutos" },
+  { key: "seconds", label: "Segundos" },
+] as const
+
 export function CountdownLock({ targetDate, onUnlock }: CountdownLockProps) {
-  const [timeLeft, setTimeLeft] = useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0
-  })
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [isUnlocked, setIsUnlocked] = useState(false)
 
   useEffect(() => {
     const updateCountdown = () => {
-      const now = new Date()
-      const difference = targetDate.getTime() - now.getTime()
+      const difference = targetDate.getTime() - Date.now()
 
       if (difference <= 0) {
         setIsUnlocked(true)
@@ -28,131 +29,71 @@ export function CountdownLock({ targetDate, onUnlock }: CountdownLockProps) {
         return
       }
 
-      const days = Math.floor(difference / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000)
-
-      setTimeLeft({ days, hours, minutes, seconds })
+      setTimeLeft({
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((difference % (1000 * 60)) / 1000),
+      })
     }
 
-    // Actualizar inmediatamente
     updateCountdown()
-
-    // Actualizar cada segundo
     const interval = setInterval(updateCountdown, 1000)
-
     return () => clearInterval(interval)
   }, [targetDate, onUnlock])
 
-  if (isUnlocked) {
-    return null
-  }
+  if (isUnlocked) return null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-start justify-center pt-8 sm:pt-12 lg:pt-16"
-      style={{ 
-        backgroundImage: 'url(/snoopy_contador.gif)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
+      style={{
+        backgroundImage: "url(/snoopy_contador.gif)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       }}
     >
+      {/* Degradado superior para que el contador se lea sobre el GIF */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55%]"
+        style={{ background: "linear-gradient(180deg, rgba(30,6,10,0.7) 0%, rgba(30,6,10,0.25) 60%, transparent 100%)" }}
+        aria-hidden
+      />
       <Snowfall />
-      <div className="relative z-10 text-center px-4 sm:px-6">
-        {/* Contador */}
-        <div className="grid grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {/* Días */}
-            <div className="text-center">
-              <div 
-                className="text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold text-white mb-1 sm:mb-2"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '3px 3px 0px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)'
-                }}
-              >
-                {String(timeLeft.days).padStart(2, '0')}
-              </div>
-              <div 
-                className="text-xs sm:text-sm lg:text-base text-white uppercase tracking-wider"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '2px 2px 0px rgba(0,0,0,0.8)'
-                }}
-              >
-                Días
-              </div>
-            </div>
 
-            {/* Horas */}
-            <div className="text-center">
-              <div 
-                className="text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold text-white mb-1 sm:mb-2"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '3px 3px 0px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)'
-                }}
-              >
-                {String(timeLeft.hours).padStart(2, '0')}
-              </div>
-              <div 
-                className="text-xs sm:text-sm lg:text-base text-white uppercase tracking-wider"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '2px 2px 0px rgba(0,0,0,0.8)'
-                }}
-              >
-                Horas
-              </div>
-            </div>
+      <div className="relative z-10 text-center px-3 sm:px-6 animate-slide-up">
+        <p className="font-display text-amber-100 text-base sm:text-xl lg:text-2xl mb-4 sm:mb-6 tracking-wide text-gold-glow">
+          Falta poquito… ✦
+        </p>
 
-            {/* Minutos */}
-            <div className="text-center">
-              <div 
-                className="text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold text-white mb-1 sm:mb-2"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '3px 3px 0px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)'
-                }}
-              >
-                {String(timeLeft.minutes).padStart(2, '0')}
+        <div className="flex items-start justify-center gap-1.5 sm:gap-3 lg:gap-4">
+          {UNITS.map((unit, i) => (
+            <Fragment key={unit.key}>
+              <div className="glass-wine rounded-xl px-2.5 py-2.5 sm:px-5 sm:py-4 lg:px-6 lg:py-5 min-w-[64px] sm:min-w-[96px] lg:min-w-[120px]">
+                <div
+                  key={timeLeft[unit.key]}
+                  className="font-mono text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white tabular-nums leading-none text-shadow-pixel animate-fadeIn"
+                  style={{ animationDuration: "0.35s" }}
+                >
+                  {String(timeLeft[unit.key]).padStart(2, "0")}
+                </div>
+                <div className="mt-1.5 sm:mt-2 text-[9px] sm:text-xs lg:text-sm text-amber-100/80 uppercase tracking-[0.18em] font-semibold">
+                  {unit.label}
+                </div>
               </div>
-              <div 
-                className="text-xs sm:text-sm lg:text-base text-white uppercase tracking-wider"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '2px 2px 0px rgba(0,0,0,0.8)'
-                }}
-              >
-                Minutos
-              </div>
-            </div>
-
-            {/* Segundos */}
-            <div className="text-center">
-              <div 
-                className="text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold text-white mb-1 sm:mb-2"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '3px 3px 0px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)'
-                }}
-              >
-                {String(timeLeft.seconds).padStart(2, '0')}
-              </div>
-              <div 
-                className="text-xs sm:text-sm lg:text-base text-white uppercase tracking-wider"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '2px 2px 0px rgba(0,0,0,0.8)'
-                }}
-              >
-                Segundos
-              </div>
-            </div>
-          </div>
+              {i < UNITS.length - 1 && (
+                <span
+                  className="font-mono font-bold self-center -mt-4 text-2xl sm:text-4xl lg:text-5xl text-amber-200/80 animate-blink-soft text-shadow-pixel"
+                  aria-hidden
+                >
+                  :
+                </span>
+              )}
+            </Fragment>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
-

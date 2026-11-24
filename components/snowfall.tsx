@@ -2,85 +2,118 @@
 
 import { useEffect, useRef } from "react"
 
+// 3 capas de profundidad: lejos (pequeños, lentos, redondos) → cerca (grandes, rápidos, pixel)
+const LAYERS = [
+  { share: 0.45, size: [1, 1.8], speed: [0.35, 0.7], opacity: [0.35, 0.55], round: true },
+  { share: 0.35, size: [1.8, 2.8], speed: [0.7, 1.2], opacity: [0.55, 0.8], round: false },
+  { share: 0.2, size: [2.8, 4], speed: [1.2, 1.9], opacity: [0.75, 0.95], round: false },
+] as const
+
+const rand = (min: number, max: number) => min + Math.random() * (max - min)
+
 export default function Snowfall() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    // Altura del navbar (aprox 60px)
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
     const navbarHeight = 60
+    let width = window.innerWidth
+    let height = window.innerHeight
+    let rafId = 0
 
     const updateCanvasSize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      width = window.innerWidth
+      height = window.innerHeight
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
-
     updateCanvasSize()
 
-    // Crear copos de nieve - Adaptativo según el dispositivo para mejor rendimiento
-    const isMobile = window.innerWidth < 768
-    const baseCount = isMobile ? 50 : 100
-    const snowflakeCount = Math.min(baseCount, Math.floor((canvas.width * canvas.height) / 20000))
-    const snowflakes = Array.from({ length: snowflakeCount }, () => ({
-      x: Math.random() * canvas.width, // Distribución aleatoria en todo el ancho
-      y: navbarHeight + Math.random() * (canvas.height - navbarHeight), // Empezar desde navbar hacia abajo
-      radius: Math.random() * 2.5 + 1.5,
-      speed: Math.random() * 1.5 + 0.8,
-      opacity: Math.random() * 0.7 + 0.5,
-      sway: Math.random() * 0.5 + 0.2, // Movimiento lateral más pronunciado
-      windOffset: Math.random() * Math.PI * 2, // Offset para movimiento único
-    }))
+    const isMobile = width < 768
+    const total = Math.min(isMobile ? 60 : 120, Math.floor((width * height) / 14000))
 
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const snowflakes = LAYERS.flatMap((layer) =>
+      Array.from({ length: Math.round(total * layer.share) }, () => ({
+        x: Math.random() * width,
+        y: navbarHeight + Math.random() * (height - navbarHeight),
+        radius: rand(layer.size[0], layer.size[1]),
+        speed: rand(layer.speed[0], layer.speed[1]) * (reduceMotion ? 0.3 : 1),
+        opacity: rand(layer.opacity[0], layer.opacity[1]),
+        sway: rand(0.2, 0.6),
+        windOffset: Math.random() * Math.PI * 2,
+        round: layer.round,
+      }))
+    )
 
-      // Optimización: usar fillRect en lugar de arc para mejor rendimiento
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-      snowflakes.forEach((flake) => {
-        // Caída vertical
-        flake.y += flake.speed
-        
-        // Movimiento lateral suave (oscilación)
-        flake.x += Math.sin(flake.y * 0.01 + flake.windOffset) * flake.sway
-        
-        // Si sale por los lados, hacer wrap
-        if (flake.x < 0) flake.x = canvas.width
-        if (flake.x > canvas.width) flake.x = 0
+    let last = performance.now()
+    const animate = (now: number) => {
+      // Normalizar a 60 fps para que la velocidad no dependa del monitor
+      const dt = Math.min((now - last) / 16.67, 3)
+      last = now
+      ctx.clearRect(0, 0, width, height)
+      ctx.fillStyle = "#ffffff"
 
-        // Si cae más abajo del canvas, reiniciar desde el navbar
-        if (flake.y > canvas.height) {
-          flake.y = navbarHeight - 10 // Empezar justo arriba del navbar
-          flake.x = Math.random() * canvas.width // Nueva posición aleatoria horizontal
+      for (const flake of snowflakes) {
+        flake.y += flake.speed * dt
+        flake.x += Math.sin(flake.y * 0.01 + flake.windOffset) * flake.sway * dt
+
+        if (flake.x < -5) flake.x = width + 5
+        if (flake.x > width + 5) flake.x = -5
+        if (flake.y > height + 5) {
+          flake.y = navbarHeight - 10
+          flake.x = Math.random() * width
         }
 
-        // Dibujar el copo de nieve (optimizado: usar fillRect en lugar de arc)
         ctx.globalAlpha = flake.opacity
-        ctx.fillRect(flake.x - flake.radius, flake.y - flake.radius, flake.radius * 2, flake.radius * 2)
-      })
-      ctx.globalAlpha = 1.0
-
-      requestAnimationFrame(animate)
+        if (flake.round) {
+          ctx.beginPath()
+          ctx.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2)
+          ctx.fill()
+        } else {
+          const r = flake.radius
+          ctx.fillRect(Math.round(flake.x - r), Math.round(flake.y - r), Math.round(r * 2), Math.round(r * 2))
+        }
+      }
+      ctx.globalAlpha = 1
+      rafId = requestAnimationFrame(animate)
     }
 
-    animate()
+    const start = () => {
+      cancelAnimationFrame(rafId)
+      last = performance.now()
+      rafId = requestAnimationFrame(animate)
+    }
+
+    // Pausar cuando la pestaña no está visible
+    const handleVisibility = () => {
+      if (document.hidden) cancelAnimationFrame(rafId)
+      else start()
+    }
 
     const handleResize = () => {
       updateCanvasSize()
-      // Reposicionar copos que estén fuera de los nuevos límites
       snowflakes.forEach((flake) => {
-        if (flake.x > canvas.width) flake.x = Math.random() * canvas.width
-        if (flake.y > canvas.height) flake.y = navbarHeight + Math.random() * (canvas.height - navbarHeight)
+        if (flake.x > width) flake.x = Math.random() * width
+        if (flake.y > height) flake.y = navbarHeight + Math.random() * (height - navbarHeight)
       })
     }
 
+    start()
     window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener("resize", handleResize)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
   }, [])
 
-  return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-40" />
+  return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full pointer-events-none z-40" aria-hidden />
 }

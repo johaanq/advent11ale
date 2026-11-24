@@ -1,204 +1,197 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Navbar } from "@/components/navbar"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, ChevronUp } from "lucide-react"
 import Snowfall from "@/components/snowfall"
+import confetti from "canvas-confetti"
 
 interface GiftRevealProps {
-  gift: any
+  gift: {
+    day: number
+    dayName: string
+    title: string
+    fullDescription: string
+    specialNote?: string
+    image?: string
+  }
   onBack: () => void
   onReveal: () => void
   openedGiftsCount?: number
   totalGifts?: number
 }
 
-export function GiftReveal({ 
-  gift, 
-  onBack, 
-  onReveal,
-  openedGiftsCount = 0,
-  totalGifts = 4
-}: GiftRevealProps) {
+const REVEAL_THRESHOLD = 150
+const MAX_DRAG = 300
+
+export function GiftReveal({ gift, onBack, onReveal, openedGiftsCount = 0, totalGifts = 4 }: GiftRevealProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
   const [isRevealed, setIsRevealed] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
   const startPosRef = useRef(0)
+  const dragOffsetRef = useRef(0)
+
+  const progress = Math.min(dragOffset / REVEAL_THRESHOLD, 1)
 
   const handleDragStart = (clientY: number) => {
+    if (isRevealed) return
     setIsDragging(true)
     startPosRef.current = clientY
   }
 
-  const handleDragMove = (clientY: number) => {
-    if (!isDragging) return
-    
-    const diff = startPosRef.current - clientY
-    // Solo permitir deslizar hacia arriba (diff positivo)
-    if (diff > 0) {
-      setDragOffset(Math.min(diff, 300))
-    }
-  }
-
-  const handleDragEnd = () => {
-    setIsDragging(false)
-    
-    // Si deslizó más del 50% (150px), revelar el regalo
-    if (dragOffset > 150) {
-      setIsRevealed(true)
-      setTimeout(() => {
-        onReveal()
-      }, 800)
-    } else {
-      setDragOffset(0)
-    }
-  }
+  const fireConfetti = useCallback(() => {
+    const colors = ["#fcd34d", "#f59e0b", "#ef4444", "#ffffff", "#fda4af"]
+    confetti({ particleCount: 90, spread: 75, origin: { y: 0.65 }, colors, scalar: 0.9 })
+    setTimeout(() => {
+      confetti({ particleCount: 50, angle: 60, spread: 60, origin: { x: 0, y: 0.7 }, colors })
+      confetti({ particleCount: 50, angle: 120, spread: 60, origin: { x: 1, y: 0.7 }, colors })
+    }, 180)
+  }, [])
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => handleDragMove(e.clientY)
-    const handleMouseUp = () => handleDragEnd()
-    const handleTouchMove = (e: TouchEvent) => handleDragMove(e.touches[0].clientY)
-    const handleTouchEnd = () => handleDragEnd()
+    if (!isDragging) return
 
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      window.addEventListener('touchmove', handleTouchMove)
-      window.addEventListener('touchend', handleTouchEnd)
+    const move = (clientY: number) => {
+      const diff = startPosRef.current - clientY
+      const next = diff > 0 ? Math.min(diff, MAX_DRAG) : 0
+      dragOffsetRef.current = next
+      setDragOffset(next)
     }
+    const end = () => {
+      setIsDragging(false)
+      if (dragOffsetRef.current > REVEAL_THRESHOLD) {
+        setIsRevealed(true)
+        fireConfetti()
+        setTimeout(onReveal, 900)
+      } else {
+        dragOffsetRef.current = 0
+        setDragOffset(0)
+      }
+    }
+    const handleMouseMove = (e: MouseEvent) => move(e.clientY)
+    const handleTouchMove = (e: TouchEvent) => move(e.touches[0].clientY)
 
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", end)
+    window.addEventListener("touchmove", handleTouchMove, { passive: true })
+    window.addEventListener("touchend", end)
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-      window.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", end)
+      window.removeEventListener("touchmove", handleTouchMove)
+      window.removeEventListener("touchend", end)
     }
-  }, [isDragging, dragOffset])
+  }, [isDragging, onReveal, fireConfetti])
 
   return (
-    <div className="min-h-screen overflow-hidden" style={{ backgroundColor: 'lab(20 46.5 22.89 / 1)' }}>
+    <div className="min-h-screen overflow-hidden bg-wine-gradient animate-page-in">
       <Snowfall />
       <Navbar openedGiftsCount={openedGiftsCount} totalGifts={totalGifts} />
-      
+
       <div className="min-h-[calc(100vh-60px)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="max-w-2xl w-full space-y-4 sm:space-y-6">
-          {/* Botón para volver */}
+        <div className="max-w-2xl w-full space-y-4 sm:space-y-5">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-2 text-amber-200 hover:text-amber-300 transition-colors text-sm sm:text-base"
-            style={{ fontFamily: 'monospace' }}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 -ml-3 text-amber-200 hover:text-amber-100 hover:bg-white/5 transition-colors text-sm sm:text-base"
           >
-            <ChevronLeft size={18} className="sm:w-5 sm:h-5" />
-            <span className="hidden sm:inline">Volver</span>
-            <span className="sm:hidden">Volver</span>
+            <ChevronLeft size={18} />
+            Volver
           </button>
 
-          {/* Contenedor del mensaje y deslizable */}
-          <div 
-            ref={containerRef}
-            className="relative overflow-hidden rounded-sm min-h-[400px] sm:min-h-[500px] h-[70vh]"
-          >
-            {/* Vista previa del regalo detrás (Fondo) */}
-            <div 
-              className="absolute inset-0 bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center z-0"
+          <div className="relative overflow-hidden rounded-xl min-h-[420px] sm:min-h-[500px] h-[70vh] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.7)]">
+            {/* Vista previa del regalo detrás */}
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-red-800 to-red-950 z-0 transition-transform duration-700"
               style={{
-                backgroundImage: gift.image ? `url(${gift.image})` : 'none',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
+                backgroundImage: gift.image ? `url(${gift.image})` : "none",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                transform: `scale(${isRevealed ? 1 : 1.08 - progress * 0.08})`,
               }}
             >
-              <div className="absolute inset-0 bg-black/40"></div>
-              {/* Emoji removido o hecho más sutil para no tapar */}
-              <p 
-                className="relative z-10 text-white text-3xl sm:text-4xl lg:text-5xl font-bold opacity-0"
-                style={{ 
-                  fontFamily: 'monospace',
-                  textShadow: '3px 3px 0px rgba(0,0,0,0.8)'
-                }}
-          >
-                🎁
-              </p>
+              <div
+                className="absolute inset-0 bg-black transition-opacity duration-500"
+                style={{ opacity: isRevealed ? 0.1 : 0.55 - progress * 0.3 }}
+              />
             </div>
 
-            {/* Mensaje de Johan (Frente deslizable) */}
-            <div 
-              className={`absolute inset-0 bg-red-900/90 backdrop-blur-sm border-3 border-amber-200/50 p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-center transition-all duration-500 z-10 ${
-                isRevealed ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-              }`}
+            {/* Carta de Johan (deslizable) */}
+            <div
+              className={`absolute inset-0 z-10 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-10 select-none touch-none cursor-grab active:cursor-grabbing ${
+                isRevealed ? "opacity-0 scale-95" : "opacity-100"
+              } ${isDragging ? "" : "transition-all duration-500 ease-out"}`}
               style={{
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.5)',
-                imageRendering: 'pixelated',
-                transform: `translateY(-${dragOffset}px)`
+                background: "linear-gradient(165deg, rgba(127,29,29,0.94) 0%, rgba(69,10,10,0.96) 100%)",
+                transform: `translateY(-${isRevealed ? 120 : dragOffset}px)`,
+                borderRadius: "0.75rem",
               }}
               onMouseDown={(e) => handleDragStart(e.clientY)}
               onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}
             >
-              <div className="text-center space-y-6 max-w-lg">
-                {/* Fecha */}
-                <p 
-                  className="text-amber-400 uppercase text-xs sm:text-sm tracking-widest font-semibold"
-                  style={{ fontFamily: 'monospace' }}
+              {/* Doble borde dorado tipo carta */}
+              <div className="pointer-events-none absolute inset-3 rounded-lg border border-amber-200/45" aria-hidden />
+              <div className="pointer-events-none absolute inset-[18px] rounded-md border border-amber-200/20" aria-hidden />
+              {/* Esquinas */}
+              {["top-5 left-5", "top-5 right-5", "bottom-5 left-5", "bottom-5 right-5"].map((pos) => (
+                <span key={pos} className={`pointer-events-none absolute ${pos} text-amber-300/60 text-xs`} aria-hidden>
+                  ✦
+                </span>
+              ))}
+
+              <div className="relative text-center space-y-5 sm:space-y-6 max-w-lg">
+                {/* Sello */}
+                <div
+                  className="mx-auto flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full text-xl sm:text-2xl"
+                  style={{
+                    background: "radial-gradient(circle at 35% 30%, #f87171, #991b1b 70%)",
+                    boxShadow: "0 3px 0 #5b0f0f, 0 6px 14px rgba(0,0,0,0.45), inset 0 1px 2px rgba(255,255,255,0.35)",
+                  }}
+                  aria-hidden
                 >
+                  ❤
+                </div>
+
+                <p className="text-amber-300 uppercase text-xs sm:text-sm tracking-[0.25em] font-semibold">
                   {gift.dayName} {gift.day} de Diciembre
                 </p>
 
-                {/* Título */}
-                <h1 
-                  className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white"
-                  style={{ 
-                    fontFamily: 'monospace',
-                    textShadow: '2px 2px 0px rgba(0,0,0,0.5)'
-                  }}
-                >
+                <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-white text-gold-glow leading-tight">
                   {gift.title}
                 </h1>
 
-                {/* Descripción/pista del regalo */}
-                <p 
-                  className="text-red-100 text-sm sm:text-base lg:text-lg leading-relaxed"
-                  style={{ fontFamily: 'monospace' }}
-                >
-                  {gift.fullDescription}
-                </p>
+                <p className="text-red-100/95 text-sm sm:text-base lg:text-lg leading-relaxed">{gift.fullDescription}</p>
 
-                {/* Nota especial */}
                 {gift.specialNote && (
-                  <div className="bg-amber-50 border-2 border-amber-400 rounded-sm p-4 mt-6">
-                    <p 
-                      className="text-amber-900 text-xs sm:text-sm italic text-center"
-                      style={{ fontFamily: 'monospace' }}
-                    >
-                      "{gift.specialNote}"
-                    </p>
+                  <div
+                    className="relative rounded-md px-5 py-4 mt-2"
+                    style={{
+                      background: "linear-gradient(170deg, #fffbeb, #fef3c7)",
+                      boxShadow: "0 8px 18px -8px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(217,119,6,0.35)",
+                      rotate: "-0.6deg",
+                    }}
+                  >
+                    <p className="text-amber-900 text-xs sm:text-sm italic text-center leading-relaxed">“{gift.specialNote}”</p>
                   </div>
                 )}
 
-                {/* Indicador de deslizar */}
-                <div className="mt-8 pt-8 border-t border-amber-400/30">
+                {/* Indicador de deslizar con progreso */}
+                <div className="pt-6 sm:pt-8 border-t border-amber-400/25">
                   <div className="flex flex-col items-center gap-3">
-                    <p 
-                      className="text-amber-300 text-sm font-semibold"
-                      style={{ fontFamily: 'monospace' }}
-                    >
-                      Desliza hacia arriba para ver tu regalo
+                    <p className="text-amber-200 text-sm font-semibold">
+                      {progress >= 1 ? "¡Suelta para abrir! 🎁" : "Desliza hacia arriba para ver tu regalo"}
                     </p>
-                    <div className="animate-bounce">
-                      <svg 
-                        width="30" 
-                        height="30" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        className="text-amber-400"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M5 15l7-7 7 7" 
-                        />
-                      </svg>
+                    <div className={progress > 0 ? "" : "animate-bounce"}>
+                      <ChevronUp size={30} className="text-amber-400" />
+                    </div>
+                    <div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/30">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-200"
+                        style={{
+                          width: `${progress * 100}%`,
+                          transition: isDragging ? "none" : "width 0.4s ease-out",
+                          boxShadow: progress >= 1 ? "0 0 10px rgba(252,211,77,0.9)" : "none",
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -210,4 +203,3 @@ export function GiftReveal({
     </div>
   )
 }
-
