@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono, Pixelify_Sans } from "next/font/google"
+import { Geist, Geist_Mono, Pixelify_Sans, Cormorant_Garamond, Great_Vibes } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
@@ -11,6 +11,14 @@ const pixelify = Pixelify_Sans({
   weight: ["400", "500", "600", "700"],
   variable: "--font-pixel",
 })
+// Tipografías elegantes para el navbar
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-cormorant",
+})
+const greatVibes = Great_Vibes({ subsets: ["latin"], weight: "400", variable: "--font-great-vibes" })
 
 export const metadata: Metadata = {
   title: "Advent11Ale",
@@ -37,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${geist.variable} ${geistMono.variable} ${pixelify.variable}`}>
+    <html lang="es" className={`${geist.variable} ${geistMono.variable} ${pixelify.variable} ${cormorant.variable} ${greatVibes.variable}`}>
       <body className="font-mono antialiased bg-wine text-white">
         {children}
         <Analytics />

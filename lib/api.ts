@@ -1,4 +1,4 @@
-// Acceso a datos de Advent11Ale.
+// Acceso a datos de Advent11Ale, separado por año (edición).
 // - Con NEXT_PUBLIC_API_URL: usa el Cloudflare Worker (sincroniza entre dispositivos).
 // - Sin ella: modo 100% local en el navegador (localStorage).
 
@@ -20,33 +20,34 @@ import {
 export type { Comment } from "./advent-state"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "")
-const LOCAL_KEY = "advent11ale-state"
 const POLL_MS = 6000
 
 export const isRemote = API_URL !== ""
 
+const localKey = (year: number) => `advent11ale-state-${year}`
+
 // ===== Almacenamiento =====
 
-function readLocal(): AdventState {
+function readLocal(year: number): AdventState {
   try {
-    const raw = localStorage.getItem(LOCAL_KEY)
+    const raw = localStorage.getItem(localKey(year))
     return raw ? normalizeState(JSON.parse(raw)) : emptyState()
   } catch {
     return emptyState()
   }
 }
 
-function writeLocal(state: AdventState) {
+function writeLocal(year: number, state: AdventState) {
   try {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(state))
+    localStorage.setItem(localKey(year), JSON.stringify(state))
   } catch {
     // Almacenamiento no disponible (modo privado, etc.)
   }
-  notifyLocalChange()
+  notifyChange()
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+async function request<T>(year: number, path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}?year=${year}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     cache: "no-store",
@@ -55,36 +56,44 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-// Evita pedir el estado varias veces a la vez
-let inflight: Promise<AdventState> | null = null
+// Evita pedir el mismo estado varias veces a la vez
+const inflight = new Map<number, Promise<AdventState>>()
 
-async function fetchState(): Promise<AdventState> {
-  if (!isRemote) return readLocal()
-  if (!inflight) {
-    inflight = request<AdventState>("/api/state")
+async function fetchState(year: number): Promise<AdventState> {
+  if (!isRemote) return readLocal(year)
+  let pending = inflight.get(year)
+  if (!pending) {
+    pending = request<AdventState>(year, "/api/state")
       .then(normalizeState)
-      .finally(() => {
-        setTimeout(() => (inflight = null), 300)
-      })
+      .finally(() => setTimeout(() => inflight.delete(year), 300))
+    inflight.set(year, pending)
   }
-  return inflight
+  return pending
 }
 
 // ===== Suscripciones (sondeo periódico en lugar de tiempo real) =====
 
-const localListeners = new Set<() => void>()
-function notifyLocalChange() {
-  localListeners.forEach((fn) => fn())
+const listeners = new Set<() => void>()
+function notifyChange() {
+  listeners.forEach((fn) => fn())
+}
+function refreshAfterWrite(year: number) {
+  inflight.delete(year)
+  notifyChange()
 }
 
-function subscribe<T>(select: (state: AdventState) => T, callback: (value: T) => void) {
+function serialize(value: unknown) {
+  return JSON.stringify(value instanceof Set ? [...value] : value)
+}
+
+function subscribe<T>(year: number, select: (state: AdventState) => T, callback: (value: T) => void) {
   let last = ""
   let stopped = false
 
   const check = async () => {
     try {
-      const value = select(await fetchState())
-      const key = JSON.stringify(value instanceof Set ? [...value] : value)
+      const value = select(await fetchState(year))
+      const key = serialize(value)
       if (!stopped && key !== last) {
         last = key
         callback(value)
@@ -94,56 +103,54 @@ function subscribe<T>(select: (state: AdventState) => T, callback: (value: T) =>
     }
   }
 
-  // Primer valor de referencia sin disparar el callback (ya se cargó al montar)
-  fetchState()
-    .then((s) => {
-      const v = select(s)
-      last = JSON.stringify(v instanceof Set ? [...v] : v)
-    })
+  // Valor de referencia sin disparar el callback (ya se cargó al montar)
+  fetchState(year)
+    .then((s) => (last = serialize(select(s))))
     .catch(() => {})
 
   const interval = isRemote ? setInterval(check, POLL_MS) : null
   const onFocus = () => check()
-  const onStorage = (e: StorageEvent) => e.key === LOCAL_KEY && check()
+  const onStorage = (e: StorageEvent) => e.key === localKey(year) && check()
   window.addEventListener("focus", onFocus)
   window.addEventListener("storage", onStorage)
-  localListeners.add(check)
+  listeners.add(check)
 
   return () => {
     stopped = true
     if (interval) clearInterval(interval)
     window.removeEventListener("focus", onFocus)
     window.removeEventListener("storage", onStorage)
-    localListeners.delete(check)
+    listeners.delete(check)
   }
 }
 
 // ===== Regalos =====
 
-export async function getOpenedGifts(): Promise<Set<number>> {
+export async function getOpenedGifts(year: number): Promise<Set<number>> {
   try {
-    return openedGiftIds(await fetchState())
+    return openedGiftIds(await fetchState(year))
   } catch (error) {
     console.error("Error al obtener regalos abiertos:", error)
     return new Set()
   }
 }
 
-export async function getLastGiftOpenedDate(): Promise<string | null> {
+export async function getLastGiftOpenedDate(year: number): Promise<string | null> {
   try {
-    return lastOpenedDate(await fetchState())
+    return lastOpenedDate(await fetchState(year))
   } catch (error) {
     console.error("Error al obtener última fecha:", error)
     return null
   }
 }
 
-export async function openGift(giftId: number): Promise<boolean> {
+export async function openGift(year: number, giftId: number): Promise<boolean> {
   try {
     if (isRemote) {
-      await request("/api/open", { method: "POST", body: JSON.stringify({ giftId }) })
+      await request(year, "/api/open", { method: "POST", body: JSON.stringify({ giftId }) })
+      refreshAfterWrite(year)
     } else {
-      writeLocal(openGiftInState(readLocal(), giftId))
+      writeLocal(year, openGiftInState(readLocal(year), giftId))
     }
     return true
   } catch (error) {
@@ -152,18 +159,19 @@ export async function openGift(giftId: number): Promise<boolean> {
   }
 }
 
-export function subscribeToOpenedGifts(callback: (giftIds: Set<number>) => void) {
-  return subscribe(openedGiftIds, callback)
+export function subscribeToOpenedGifts(year: number, callback: (giftIds: Set<number>) => void) {
+  return subscribe(year, openedGiftIds, callback)
 }
 
-// Vuelve a cerrar todos los regalos (likes y comentarios se conservan).
+// Vuelve a cerrar todos los regalos del año (likes y comentarios se conservan).
 // En modo remoto requiere el RESET_TOKEN del Worker.
-export async function resetOpenedGifts(token?: string): Promise<boolean> {
+export async function resetOpenedGifts(year: number, token?: string): Promise<boolean> {
   try {
     if (isRemote) {
-      await request("/api/reset", { method: "POST", headers: { Authorization: `Bearer ${token ?? ""}` } })
+      await request(year, "/api/reset", { method: "POST", headers: { Authorization: `Bearer ${token ?? ""}` } })
+      refreshAfterWrite(year)
     } else {
-      writeLocal({ ...readLocal(), opened: [] })
+      writeLocal(year, { ...readLocal(year), opened: [] })
     }
     return true
   } catch (error) {
@@ -174,26 +182,27 @@ export async function resetOpenedGifts(token?: string): Promise<boolean> {
 
 // ===== Likes =====
 
-export async function getLikeStatus(giftId: number): Promise<boolean> {
+export async function getLikeStatus(year: number, giftId: number): Promise<boolean> {
   try {
-    return isLiked(await fetchState(), giftId)
+    return isLiked(await fetchState(year), giftId)
   } catch (error) {
     console.error("Error getting like status:", error)
     return false
   }
 }
 
-export async function toggleLike(giftId: number): Promise<boolean> {
+export async function toggleLike(year: number, giftId: number): Promise<boolean> {
   try {
     if (isRemote) {
-      const { liked } = await request<{ liked: boolean }>("/api/like", {
+      const { liked } = await request<{ liked: boolean }>(year, "/api/like", {
         method: "POST",
         body: JSON.stringify({ giftId }),
       })
+      refreshAfterWrite(year)
       return liked
     }
-    const result = toggleLikeInState(readLocal(), giftId)
-    writeLocal(result.state)
+    const result = toggleLikeInState(readLocal(year), giftId)
+    writeLocal(year, result.state)
     return result.liked
   } catch (error) {
     console.error("Error toggling like:", error)
@@ -201,34 +210,37 @@ export async function toggleLike(giftId: number): Promise<boolean> {
   }
 }
 
-export function subscribeToLikes(giftId: number, callback: (liked: boolean) => void) {
-  return subscribe((s) => isLiked(s, giftId), callback)
+export function subscribeToLikes(year: number, giftId: number, callback: (liked: boolean) => void) {
+  return subscribe(year, (s) => isLiked(s, giftId), callback)
 }
 
 // ===== Comentarios =====
 
-export async function getComments(giftId: number): Promise<Comment[]> {
+export async function getComments(year: number, giftId: number): Promise<Comment[]> {
   try {
-    return commentsFor(await fetchState(), giftId)
+    return commentsFor(await fetchState(year), giftId)
   } catch (error) {
     console.error("Error getting comments:", error)
     return []
   }
 }
 
-export async function addComment(giftId: number, comment: string, authorName: string = "Ale"): Promise<boolean> {
+export async function addComment(
+  year: number,
+  giftId: number,
+  comment: string,
+  authorName: string = "Ale"
+): Promise<boolean> {
   try {
     if (isRemote) {
-      await request("/api/comments", {
+      await request(year, "/api/comments", {
         method: "POST",
         body: JSON.stringify({ giftId, comment, authorName }),
       })
-      // Refrescar para que el comentario aparezca enseguida
-      inflight = null
-      localListeners.forEach((fn) => fn())
+      refreshAfterWrite(year)
     } else {
       const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now())
-      writeLocal(addCommentToState(readLocal(), giftId, comment, authorName, id).state)
+      writeLocal(year, addCommentToState(readLocal(year), giftId, comment, authorName, id).state)
     }
     return true
   } catch (error) {
@@ -237,14 +249,13 @@ export async function addComment(giftId: number, comment: string, authorName: st
   }
 }
 
-export async function deleteComment(commentId: string): Promise<boolean> {
+export async function deleteComment(year: number, commentId: string): Promise<boolean> {
   try {
     if (isRemote) {
-      await request(`/api/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" })
-      inflight = null
-      localListeners.forEach((fn) => fn())
+      await request(year, `/api/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" })
+      refreshAfterWrite(year)
     } else {
-      writeLocal(deleteCommentFromState(readLocal(), commentId))
+      writeLocal(year, deleteCommentFromState(readLocal(year), commentId))
     }
     return true
   } catch (error) {
@@ -253,6 +264,6 @@ export async function deleteComment(commentId: string): Promise<boolean> {
   }
 }
 
-export function subscribeToComments(giftId: number, callback: (comments: Comment[]) => void) {
-  return subscribe((s) => commentsFor(s, giftId), callback)
+export function subscribeToComments(year: number, giftId: number, callback: (comments: Comment[]) => void) {
+  return subscribe(year, (s) => commentsFor(s, giftId), callback)
 }

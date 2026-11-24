@@ -4,31 +4,23 @@ import { Navbar } from "@/components/navbar"
 import { ChevronLeft, Heart, ArrowRight } from "lucide-react"
 import Snowfall from "@/components/snowfall"
 
-interface Gift {
-  id: number
-  day: number
-  dayName: string
-  title: string
-  description: string
-  fullDescription: string
-  image?: string
-  color: string
-}
+import type { Gift } from "@/lib/editions"
 
 interface OpenedGiftsPageProps {
   openedGifts: Set<number>
   gifts: Gift[]
+  year: number
   onBack: () => void
   onSelectGift: (giftId: number) => void
 }
 
-export function OpenedGiftsPage({ openedGifts, gifts, onBack, onSelectGift }: OpenedGiftsPageProps) {
+export function OpenedGiftsPage({ openedGifts, gifts, year, onBack, onSelectGift }: OpenedGiftsPageProps) {
   const openedGiftsList = gifts.filter((gift) => openedGifts.has(gift.id)).sort((a, b) => a.day - b.day)
 
   return (
     <div className="min-h-screen overflow-hidden bg-wine-gradient animate-page-in">
       <Snowfall />
-      <Navbar openedGiftsCount={openedGifts.size} totalGifts={gifts.length} />
+      <Navbar openedGiftsCount={openedGifts.size} totalGifts={gifts.length} year={year} />
 
       <div className="min-h-[calc(100vh-60px)] p-3 sm:p-6 lg:p-10">
         <div className="max-w-6xl mx-auto space-y-8">
@@ -49,7 +41,7 @@ export function OpenedGiftsPage({ openedGifts, gifts, onBack, onSelectGift }: Op
               <div className="flex items-center justify-center gap-3">
                 <div className="gold-divider w-10" />
                 <p className="text-amber-200 text-xs sm:text-sm lg:text-base">
-                  {openedGiftsList.length} de {gifts.length} sorpresas
+                  {openedGiftsList.length} de {gifts.length} sorpresas · {year}
                 </p>
                 <div className="gold-divider w-10" />
               </div>

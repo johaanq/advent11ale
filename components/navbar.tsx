@@ -1,104 +1,178 @@
 "use client"
 
 import { useState, useEffect, memo } from "react"
-import { Gift, CalendarHeart } from "lucide-react"
+import { BIRTHDAY_DAY, CURRENT_EDITION, limaNow } from "@/lib/editions"
 
 interface NavbarProps {
   openedGiftsCount?: number
   totalGifts?: number
   onShowOpenedGifts?: () => void
+  // Año que se está viendo y, opcionalmente, selector de año
+  year?: number
+  years?: number[]
+  onYearChange?: (year: number) => void
 }
 
-export const Navbar = memo(function Navbar({ openedGiftsCount = 0, totalGifts = 4, onShowOpenedGifts }: NavbarProps) {
-  const [currentDate, setCurrentDate] = useState("")
+// Separador fino dorado
+function Dot() {
+  return (
+    <span className="text-amber-300/50 text-[10px] select-none" aria-hidden>
+      ✦
+    </span>
+  )
+}
+
+function YearTabs({ year, years, onChange }: { year: number; years: number[]; onChange: (y: number) => void }) {
+  return (
+    <div role="tablist" aria-label="Año" className="flex items-center gap-3">
+      {years.map((y) => {
+        const active = y === year
+        return (
+          <button
+            key={y}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => !active && onChange(y)}
+            className={`relative pb-0.5 font-serif text-[15px] sm:text-[17px] tabular-nums tracking-wide transition-colors focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-amber-200/70 ${
+              active ? "font-semibold text-amber-100" : "font-medium text-red-100/55 hover:text-red-50"
+            }`}
+          >
+            {y}
+            <span
+              className={`absolute inset-x-0 -bottom-0.5 h-px origin-center bg-gradient-to-r from-transparent via-amber-300 to-transparent transition-transform duration-300 ${
+                active ? "scale-x-100" : "scale-x-0"
+              }`}
+              aria-hidden
+            />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export const Navbar = memo(function Navbar({
+  openedGiftsCount = 0,
+  totalGifts = 0,
+  onShowOpenedGifts,
+  year = CURRENT_EDITION.year,
+  years,
+  onYearChange,
+}: NavbarProps) {
+  const showSelector = Boolean(years && years.length > 1 && onYearChange)
+  const [longDate, setLongDate] = useState("")
   const [shortDate, setShortDate] = useState("")
-  const [daysUntilBirthday, setDaysUntilBirthday] = useState(0)
+  const [daysLeft, setDaysLeft] = useState<number | null>(null)
 
   useEffect(() => {
-    const updateDate = () => {
+    const update = () => {
       const today = new Date()
-      setCurrentDate(
-        today.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric", weekday: "long" })
-      )
-      setShortDate(today.toLocaleDateString("es-ES", { day: "numeric", month: "short" }))
+      const long = today.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })
+      setLongDate(long.charAt(0).toUpperCase() + long.slice(1))
+      setShortDate(today.toLocaleDateString("es-ES", { day: "numeric", month: "long" }))
 
-      // Calcular días hasta cumpleaños
-      const birthdayDate = new Date(2025, 11, 11)
-      const days = Math.ceil((birthdayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      setDaysUntilBirthday(days > 0 ? days : 0)
+      // Días hasta el cumpleaños del año que se está viendo (en Lima)
+      const now = limaNow(today)
+      const todayUtc = Date.UTC(now.year, now.month - 1, now.day)
+      const birthdayUtc = Date.UTC(year, 11, BIRTHDAY_DAY)
+      setDaysLeft(Math.round((birthdayUtc - todayUtc) / 86400000))
     }
-
-    updateDate()
-    const interval = setInterval(updateDate, 1000 * 60 * 60)
+    update()
+    const interval = setInterval(update, 1000 * 60 * 30)
     return () => clearInterval(interval)
-  }, [])
+  }, [year])
 
-  const progress = totalGifts > 0 ? openedGiftsCount / totalGifts : 0
+  const giftsLabel = `${openedGiftsCount} de ${totalGifts} regalos`
+  const daysLabel =
+    daysLeft === null || daysLeft < 0
+      ? null
+      : daysLeft === 0
+        ? "¡Hoy es su día!"
+        : daysLeft === 1
+          ? "Falta 1 día"
+          : `Faltan ${daysLeft} días`
+
+  const giftsItem = onShowOpenedGifts ? (
+    <button
+      type="button"
+      onClick={onShowOpenedGifts}
+      className="group relative font-serif italic text-[15px] sm:text-[17px] text-red-50/90 transition-colors hover:text-amber-100 focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-amber-200/70"
+    >
+      {giftsLabel}
+      <span
+        className="absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-amber-200/70 transition-transform duration-300 group-hover:scale-x-100"
+        aria-hidden
+      />
+    </button>
+  ) : (
+    <span className="font-serif italic text-[15px] sm:text-[17px] text-red-50/90">{giftsLabel}</span>
+  )
 
   return (
-    <nav className="relative z-50 w-full px-3 py-2 sm:px-5 sm:py-3 bg-wine/90 backdrop-blur-md">
-      <div className="flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto gap-1.5 sm:gap-4">
-        {/* Lado izquierdo */}
-        <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 w-full sm:w-auto justify-between sm:justify-start">
-          {/* Fecha de hoy */}
-          <span className="text-red-100/90 text-[10px] sm:text-xs lg:text-sm font-semibold uppercase tracking-wide text-shadow-soft">
-            <span className="hidden sm:inline">{currentDate}</span>
-            <span className="sm:hidden">{shortDate}</span>
+    <nav className="relative z-50 w-full bg-wine/95 backdrop-blur-md">
+      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center gap-x-4 px-4 pt-2 pb-2.5 sm:px-6 sm:py-3">
+        {/* Izquierda: fecha */}
+        <p className="hidden sm:block font-serif italic text-[17px] text-red-100/75 truncate">{longDate}</p>
+        <p className="sm:hidden font-serif italic text-[15px] text-red-100/75 truncate">{shortDate}</p>
+
+        {/* Centro: logo */}
+        <h1 className="flex items-center gap-2.5 sm:gap-3 leading-none">
+          <span className="hidden sm:block h-px w-8 bg-gradient-to-r from-transparent to-amber-300/60" aria-hidden />
+          <span className="font-script text-[1.9rem] sm:text-[2.35rem] text-amber-100 drop-shadow-[0_1px_8px_rgba(252,211,77,0.28)] translate-y-[2px]">
+            Advent11Ale
           </span>
+          <span className="hidden sm:block h-px w-8 bg-gradient-to-l from-transparent to-amber-300/60" aria-hidden />
+        </h1>
 
-          <span className="hidden sm:block h-5 w-px bg-white/15" />
-
-          {/* Regalos abiertos */}
-          <button
-            type="button"
-            onClick={() => onShowOpenedGifts?.()}
-            disabled={!onShowOpenedGifts}
-            className="group relative flex items-center gap-1.5 sm:gap-2 rounded-full border border-amber-200/25 bg-black/15 pl-2 pr-2.5 py-1 transition-all enabled:hover:border-amber-200/60 enabled:hover:bg-black/25 focus-visible:outline-2 focus-visible:outline-amber-300 disabled:cursor-default"
-            aria-label={`Regalos abiertos: ${openedGiftsCount} de ${totalGifts}`}
-          >
-            <Gift size={14} className="text-amber-300 transition-transform group-enabled:group-hover:-rotate-12" />
-            <span className="text-red-100/90 text-[10px] sm:text-xs font-semibold uppercase tracking-wide hidden sm:inline">
-              Regalos
-            </span>
-            <span className="text-white text-xs sm:text-sm font-bold tabular-nums">
-              {openedGiftsCount}/{totalGifts}
-            </span>
-            {/* Mini barra de progreso */}
-            <span className="absolute left-3 right-3 -bottom-px h-px overflow-hidden rounded-full">
-              <span
-                className="block h-full bg-amber-300 transition-all duration-700"
-                style={{ width: `${progress * 100}%` }}
-              />
-            </span>
-          </button>
-
-          {/* Días restantes */}
-          <div className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-white/10 bg-black/10 px-2.5 py-1">
-            <CalendarHeart size={14} className="text-rose-300" />
-            <span className="text-red-100/90 text-[10px] sm:text-xs font-semibold uppercase tracking-wide hidden sm:inline">
-              Días
-            </span>
-            <span className="text-white text-xs sm:text-sm font-bold tabular-nums">{daysUntilBirthday}</span>
-          </div>
+        {/* Derecha: datos y año (escritorio) */}
+        <div className="hidden sm:flex items-center justify-end gap-3 lg:gap-4 min-w-0">
+          {giftsItem}
+          {daysLabel && (
+            <>
+              <Dot />
+              <span className="font-serif italic text-[17px] text-red-50/80 whitespace-nowrap">{daysLabel}</span>
+            </>
+          )}
+          {showSelector ? (
+            <>
+              <span className="mx-1 h-5 w-px bg-amber-200/20" aria-hidden />
+              <YearTabs year={year} years={years!} onChange={onYearChange!} />
+            </>
+          ) : (
+            <>
+              <Dot />
+              <span className="font-serif text-[17px] font-semibold text-amber-100/90 tabular-nums">{year}</span>
+            </>
+          )}
         </div>
 
-        {/* Centro - Logo */}
-        <div className="flex-1 flex justify-center w-full sm:w-auto order-first sm:order-none">
-          <h1 className="font-display text-xl sm:text-2xl lg:text-[1.7rem] font-semibold tracking-wider drop-gold">
-            <span className="text-shimmer">Advent11Ale</span>
-          </h1>
-        </div>
-
-        {/* Lado derecho */}
-        <div className="hidden sm:flex items-center gap-3 lg:gap-4 justify-end">
-          <span className="text-red-100/80 text-xs sm:text-sm font-semibold tabular-nums">2025</span>
-          <span className="h-4 w-px bg-white/15" />
-          <span className="text-red-100/80 text-xs sm:text-sm font-semibold">ES</span>
+        {/* Derecha en móvil: año */}
+        <div className="sm:hidden flex justify-end">
+          {showSelector ? (
+            <YearTabs year={year} years={years!} onChange={onYearChange!} />
+          ) : (
+            <span className="font-serif text-[15px] font-semibold text-amber-100/90">{year}</span>
+          )}
         </div>
       </div>
 
-      {/* Línea dorada inferior */}
-      <div className="gold-divider absolute inset-x-0 bottom-0" />
+      {/* Segunda línea en móvil: regalos y días */}
+      <div className="sm:hidden flex items-center justify-center gap-3 pb-2 -mt-0.5">
+        {giftsItem}
+        {daysLabel && (
+          <>
+            <Dot />
+            <span className="font-serif italic text-[15px] text-red-50/80">{daysLabel}</span>
+          </>
+        )}
+      </div>
+
+      {/* Doble filete dorado inferior */}
+      <div className="absolute inset-x-0 bottom-0" aria-hidden>
+        <div className="gold-divider" />
+        <div className="mx-auto mt-[3px] h-px max-w-3xl bg-gradient-to-r from-transparent via-amber-200/20 to-transparent" />
+      </div>
     </nav>
   )
 })

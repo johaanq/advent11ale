@@ -19,12 +19,13 @@ interface GiftRevealProps {
   onReveal: () => void
   openedGiftsCount?: number
   totalGifts?: number
+  year?: number
 }
 
 const REVEAL_THRESHOLD = 150
 const MAX_DRAG = 300
 
-export function GiftReveal({ gift, onBack, onReveal, openedGiftsCount = 0, totalGifts = 4 }: GiftRevealProps) {
+export function GiftReveal({ gift, onBack, onReveal, openedGiftsCount = 0, totalGifts = 0, year }: GiftRevealProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
   const [isRevealed, setIsRevealed] = useState(false)
@@ -86,7 +87,7 @@ export function GiftReveal({ gift, onBack, onReveal, openedGiftsCount = 0, total
   return (
     <div className="min-h-screen overflow-hidden bg-wine-gradient animate-page-in">
       <Snowfall />
-      <Navbar openedGiftsCount={openedGiftsCount} totalGifts={totalGifts} />
+      <Navbar openedGiftsCount={openedGiftsCount} totalGifts={totalGifts} year={year} />
 
       <div className="min-h-[calc(100vh-60px)] flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="max-w-2xl w-full space-y-4 sm:space-y-5">

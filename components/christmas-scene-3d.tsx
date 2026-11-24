@@ -14,7 +14,7 @@ import { EffectComposer, Bloom, Vignette, ToneMapping } from "@react-three/postp
 import { ToneMappingMode } from "postprocessing"
 import { Suspense, useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { ChristmasTree } from "./christmas-tree-3d"
-import { GiftBox3D, GIFT_STYLES } from "./gift-box-3d"
+import { GiftBox3D, giftStyleFor, BIRTHDAY_GIFT_DAY } from "./gift-box-3d"
 import * as THREE from "three"
 
 interface SceneGift {
@@ -28,6 +28,8 @@ interface ChristmasScene3DProps {
   isAnimating: boolean
   openedGifts?: Set<number>
   highlightGiftId?: number | null
+  // Si devuelve false, el regalo no se anima (aún no se puede abrir)
+  canStartOpening?: (id: number) => boolean
 }
 
 const CAMERA_POSITION = new THREE.Vector3(-1, 2, 6)
@@ -297,6 +299,7 @@ export function ChristmasScene3D({
   isAnimating,
   openedGifts = new Set(),
   highlightGiftId = null,
+  canStartOpening,
 }: ChristmasScene3DProps) {
   const [selectedGiftId, setSelectedGiftId] = useState<number | null>(null)
   const [highQuality, setHighQuality] = useState(true)
@@ -310,7 +313,13 @@ export function ChristmasScene3D({
     (id: number) => {
       if (isAnimating || selectedGiftId !== null) return
       const giftToOpen = gifts.find((g) => g.id === id)
-      if (!giftToOpen || openedGifts.has(giftToOpen.id)) return
+      if (!giftToOpen) return
+      // Regalo ya abierto: ver su detalle sin animación
+      if (openedGifts.has(giftToOpen.id)) {
+        onSelectGift(id)
+        return
+      }
+      if (canStartOpening && !canStartOpening(id)) return
 
       setSelectedGiftId(id)
       // Esperar a que termine la animación (1.8 s) antes de cambiar de página
@@ -319,21 +328,33 @@ export function ChristmasScene3D({
         setSelectedGiftId(null)
       }, 1800)
     },
-    [gifts, openedGifts, isAnimating, selectedGiftId, onSelectGift]
+    [gifts, openedGifts, isAnimating, selectedGiftId, onSelectGift, canStartOpening]
   )
 
   const placedGifts = useMemo(() => {
-    const giftSetup = [
+    // Lugar alrededor del árbol según el tipo de caja (mismo orden que los estilos)
+    const daySpots = [
       { dist: 3.3, angle: Math.PI * 0.5 },
       { dist: 3.1, angle: Math.PI * 0.68 },
       { dist: 3.2, angle: Math.PI * 0.85 },
-      { dist: 3.0, angle: Math.PI * 1.08 },
+      // 5º regalo: delante, entre la caja verde y la roja (visible desde la cámara)
+      { dist: 4.5, angle: Math.PI * 0.6 },
     ]
-    return gifts.map((gift, index) => {
-      const setup = giftSetup[index] ?? giftSetup[0]
-      const style = GIFT_STYLES[gift.id - 1] ?? GIFT_STYLES[0]
+    const birthdaySpot = { dist: 3.0, angle: Math.PI * 1.08 }
+
+    const regularDays = gifts
+      .map((g) => g.day)
+      .filter((day) => day !== BIRTHDAY_GIFT_DAY)
+      .sort((a, b) => a - b)
+
+    return gifts.map((gift) => {
+      const isBirthday = gift.day === BIRTHDAY_GIFT_DAY
+      const index = isBirthday ? 0 : regularDays.indexOf(gift.day)
+      const style = giftStyleFor(gift.day, index)
+      const setup = isBirthday ? birthdaySpot : daySpots[index % daySpots.length]
       return {
         gift,
+        style,
         x: TREE_X + Math.cos(setup.angle) * setup.dist,
         z: TREE_Z + Math.sin(setup.angle) * setup.dist,
         // Apoyar la base exactamente sobre la alfombra
@@ -392,13 +413,14 @@ export function ChristmasScene3D({
           />
 
           {/* REGALOS */}
-          {placedGifts.map(({ gift, x, z, height, rotation }) => {
+          {placedGifts.map(({ gift, style, x, z, height, rotation }) => {
             const isCurrentlyAnimating = selectedGiftId === gift.id
             const isDisabled = (isAnimating || selectedGiftId !== null) && !isCurrentlyAnimating
             return (
               <group key={gift.id} position={[x, height, z]} rotation={[0, rotation, 0]}>
                 <GiftBox3D
                   gift={gift}
+                  style={style}
                   position={[0, 0, 0]}
                   onClick={() => handleSelectGift(gift.id)}
                   isAnimating={isCurrentlyAnimating}

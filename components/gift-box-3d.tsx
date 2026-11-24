@@ -6,20 +6,37 @@ import { Html, RoundedBox, Sparkles } from "@react-three/drei"
 import type { Group } from "three"
 import * as THREE from "three"
 
-// 4 regalos ÚNICOS - diferentes tamaños y colores
-export const GIFT_STYLES: { box: string; ribbon: string; metallic: boolean; size: [number, number, number] }[] = [
-  // Día 8 - VERDE CON ROJO - Muy grande
+export interface GiftStyle {
+  box: string
+  ribbon: string
+  metallic: boolean
+  size: [number, number, number]
+}
+
+// Regalos normales, en orden de día (se reparten en este orden)
+const DAY_STYLES: GiftStyle[] = [
+  // VERDE CON ROJO - Muy grande
   { box: "#2E7D32", ribbon: "#D21F3C", metallic: false, size: [2.0, 1.0, 1.6] },
-  // Día 9 - ROJO CON DORADO - Muy alto
+  // ROJO CON DORADO - Muy alto
   { box: "#C62828", ribbon: "#F2C14E", metallic: true, size: [1.0, 1.8, 1.0] },
-  // Día 10 - ROSA CON PLATEADO - Mediano
+  // ROSA CON PLATEADO - Mediano
   { box: "#D81B60", ribbon: "#D9D9E0", metallic: true, size: [1.3, 1.3, 1.3] },
-  // Día 11 - AZUL CON DORADO - Pequeño (CUMPLEAÑOS)
-  { box: "#1565C0", ribbon: "#F2C14E", metallic: true, size: [1.1, 1.1, 1.1] },
+  // MORADO CON PLATEADO - Pequeño y bajito
+  { box: "#6A1B9A", ribbon: "#E6E6EE", metallic: true, size: [1.0, 0.8, 1.0] },
 ]
+
+// CUMPLEAÑOS - AZUL CON DORADO - Pequeño, con destellos
+const BIRTHDAY_STYLE: GiftStyle = { box: "#1565C0", ribbon: "#F2C14E", metallic: true, size: [1.1, 1.1, 1.1] }
+
+export const BIRTHDAY_GIFT_DAY = 11
+
+export function giftStyleFor(day: number, index: number): GiftStyle {
+  return day === BIRTHDAY_GIFT_DAY ? BIRTHDAY_STYLE : DAY_STYLES[index % DAY_STYLES.length]
+}
 
 interface GiftBox3DProps {
   gift: { id: number; day: number }
+  style: GiftStyle
   position: [number, number, number]
   onClick: () => void
   isAnimating?: boolean
@@ -38,6 +55,7 @@ const easeOutBack = (t: number) => {
 
 export function GiftBox3D({
   gift,
+  style,
   position,
   onClick,
   isAnimating = false,
@@ -67,9 +85,8 @@ export function GiftBox3D({
     targetScale: 1,
   })
 
-  const style = GIFT_STYLES[gift.id - 1] ?? GIFT_STYLES[0]
   const [w, h, d] = style.size
-  const isBirthday = gift.day === 11
+  const isBirthday = gift.day === BIRTHDAY_GIFT_DAY
 
   // Materiales compartidos (uno por tipo, no uno por mesh)
   const boxMaterial = useMemo(
@@ -280,7 +297,7 @@ export function GiftBox3D({
       <group
         onPointerOver={(e) => {
           e.stopPropagation()
-          if (!isDisabled && !isOpened) setHovered(true)
+          if (!isDisabled) setHovered(true)
         }}
         onPointerOut={(e) => {
           e.stopPropagation()

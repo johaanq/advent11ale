@@ -12,22 +12,17 @@ import {
   subscribeToLikes,
   type Comment,
 } from "@/lib/api"
+import type { Gift } from "@/lib/editions"
 
 interface GiftDetailPageProps {
-  gift: {
-    id: number
-    day: number
-    dayName: string
-    title: string
-    fullDescription: string
-    specialNote?: string
-  }
+  gift: Gift
+  year: number
   onBack: () => void
   openedGiftsCount?: number
   totalGifts?: number
 }
 
-export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts = 4 }: GiftDetailPageProps) {
+export function GiftDetailPage({ gift, year, onBack, openedGiftsCount = 1, totalGifts = 0 }: GiftDetailPageProps) {
   const [liked, setLiked] = useState(false)
   const [likeAnimKey, setLikeAnimKey] = useState(0)
   const [showHeartBurst, setShowHeartBurst] = useState(false)
@@ -40,12 +35,9 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
   const lastTapRef = useRef(0)
   const commentInputRef = useRef<HTMLInputElement>(null)
 
-  // Imágenes del carrusel (2 para regalo 2, 3 para los demás)
-  const carouselImages =
-    gift.id === 2
-      ? [`/regalo${gift.id}_1.jpg`, `/regalo${gift.id}_2.jpg`]
-      : [`/regalo${gift.id}_1.jpg`, `/regalo${gift.id}_2.jpg`, `/regalo${gift.id}_3.jpg`]
-  const hasCarousel = gift.id !== 3
+  // Fotos del carrusel (definidas en lib/editions.ts). Sin fotos: "Cargando fotos..."
+  const carouselImages = gift.photos
+  const hasCarousel = carouselImages.length > 0
 
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length)
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)
@@ -67,24 +59,24 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
   // Cargar estado inicial
   useEffect(() => {
     const loadData = async () => {
-      setLiked(await getLikeStatus(gift.id))
-      setComments(await getComments(gift.id))
+      setLiked(await getLikeStatus(year, gift.id))
+      setComments(await getComments(year, gift.id))
     }
     loadData()
-  }, [gift.id])
+  }, [year, gift.id])
 
   // Suscribirse a cambios en tiempo real
   useEffect(() => {
-    const unsubscribeComments = subscribeToComments(gift.id, setComments)
-    const unsubscribeLikes = subscribeToLikes(gift.id, setLiked)
+    const unsubscribeComments = subscribeToComments(year, gift.id, setComments)
+    const unsubscribeLikes = subscribeToLikes(year, gift.id, setLiked)
     return () => {
       unsubscribeComments()
       unsubscribeLikes()
     }
-  }, [gift.id])
+  }, [year, gift.id])
 
   const handleLike = async () => {
-    const newLiked = await toggleLike(gift.id)
+    const newLiked = await toggleLike(year, gift.id)
     setLiked(newLiked)
     if (newLiked) setLikeAnimKey((k) => k + 1)
   }
@@ -104,7 +96,7 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
   const handleAddComment = async () => {
     if (!newComment.trim() || isSubmitting) return
     setIsSubmitting(true)
-    const success = await addComment(gift.id, newComment.trim())
+    const success = await addComment(year, gift.id, newComment.trim())
     if (success) setNewComment("")
     setIsSubmitting(false)
   }
@@ -118,7 +110,7 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
 
   return (
     <div className="min-h-screen bg-wine-gradient animate-page-in">
-      <Navbar openedGiftsCount={openedGiftsCount} totalGifts={totalGifts} />
+      <Navbar openedGiftsCount={openedGiftsCount} totalGifts={totalGifts} year={year} />
 
       <div className="min-h-[calc(100vh-60px)] p-0 sm:p-4 lg:p-8">
         <div className="max-w-2xl mx-auto animate-slide-up">
@@ -150,7 +142,7 @@ export function GiftDetailPage({ gift, onBack, openedGiftsCount = 1, totalGifts 
                 <div>
                   <p className="text-white font-semibold text-sm sm:text-base">Johan</p>
                   <p className="text-amber-300/75 text-xs">
-                    {gift.dayName} {gift.day} de Diciembre
+                    {gift.dayName} {gift.day} de diciembre de {year}
                   </p>
                 </div>
               </div>

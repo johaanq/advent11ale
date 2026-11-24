@@ -6,6 +6,9 @@ import Snowfall from "@/components/snowfall"
 interface CountdownLockProps {
   targetDate: Date
   onUnlock: () => void
+  // Botón para ver el año anterior mientras tanto
+  archiveYear?: number
+  onViewArchive?: () => void
 }
 
 const UNITS = [
@@ -15,7 +18,7 @@ const UNITS = [
   { key: "seconds", label: "Segundos" },
 ] as const
 
-export function CountdownLock({ targetDate, onUnlock }: CountdownLockProps) {
+export function CountdownLock({ targetDate, onUnlock, archiveYear, onViewArchive }: CountdownLockProps) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [isUnlocked, setIsUnlocked] = useState(false)
 
@@ -93,6 +96,16 @@ export function CountdownLock({ targetDate, onUnlock }: CountdownLockProps) {
             </Fragment>
           ))}
         </div>
+
+        {onViewArchive && archiveYear && (
+          <button
+            type="button"
+            onClick={onViewArchive}
+            className="mt-6 sm:mt-8 inline-flex items-center gap-2 rounded-full border border-amber-200/40 bg-black/30 px-4 py-2 text-xs sm:text-sm text-amber-100 backdrop-blur-sm transition-colors hover:border-amber-200/80 hover:bg-black/45"
+          >
+            ✦ Mientras tanto, recordar {archiveYear}
+          </button>
+        )}
       </div>
     </div>
   )

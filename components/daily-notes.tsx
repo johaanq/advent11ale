@@ -1,44 +1,17 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import type { Edition } from "@/lib/editions"
 
 interface DailyNotesProps {
   openedGifts: Set<number>
-  gifts: { id: number; day: number }[]
-}
-
-// Notitas por día (4 por cada día)
-const NOTES_BY_DAY: Record<number, string[]> = {
-  8: [
-    "Gracias por existir en mi vida.",
-    "Cada momento contigo es un regalo.",
-    "Hoy comienza algo especial para ti.",
-    "Con amor, de Johan para mi Ale.",
-  ],
-  9: [
-    "Hoy también es un día bonito porque tú estás.",
-    "Tu sonrisa ilumina mis días.",
-    "Eres mi persona favorita en el mundo.",
-    "Con amor, de Johan para mi Ale.",
-  ],
-  10: [
-    "Cada día a tu lado es un regalo para mí.",
-    "Contigo todo es mejor.",
-    "Gracias por llenar mi vida de alegría.",
-    "Con amor, de Johan para mi Ale.",
-  ],
-  11: [
-    "Feliz cumpleaños, mi amor.",
-    "Hoy celebro que existes.",
-    "Eres lo mejor que me ha pasado.",
-    "Te amo más de lo que las palabras pueden expresar.",
-  ],
+  edition: Edition
 }
 
 // Leve rotación estable por notita
 const noteRotation = (i: number) => (((i * 37) % 7) - 3) * 0.6
 
-export function DailyNotes({ openedGifts, gifts }: DailyNotesProps) {
+export function DailyNotes({ openedGifts, edition }: DailyNotesProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [visibleNoteIndices, setVisibleNoteIndices] = useState<Set<number>>(new Set())
   const observerRef = useRef<IntersectionObserver | null>(null)
@@ -83,13 +56,13 @@ export function DailyNotes({ openedGifts, gifts }: DailyNotesProps) {
 
   const visibleNotes = useMemo(() => {
     const notes: string[] = []
-    ;[...gifts]
+    ;[...edition.gifts]
       .sort((a, b) => a.day - b.day)
       .forEach((gift) => {
-        if (openedGifts.has(gift.id)) notes.push(...(NOTES_BY_DAY[gift.day] || []))
+        if (openedGifts.has(gift.id)) notes.push(...(edition.notesByDay[gift.day] || []))
       })
     return notes
-  }, [gifts, openedGifts])
+  }, [edition, openedGifts])
 
   if (visibleNotes.length === 0) return null
 

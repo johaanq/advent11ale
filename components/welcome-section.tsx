@@ -1,19 +1,12 @@
 "use client"
 
 import { useState, useEffect, useMemo, memo } from "react"
-
-interface Gift {
-  id: number
-  day: number
-}
+import { isDayAvailable, limaNow, type Edition, type LimaTime } from "@/lib/editions"
 
 interface WelcomeSectionProps {
   openedGifts?: Set<number>
-  gifts?: Gift[]
+  edition: Edition
 }
-
-// Íconos para los días abiertos (día 8, 9, 10, 11)
-const CHRISTMAS_ICONS = ["🎅", "🎄", "☃️", "🦌"]
 
 // Rotaciones pseudo-aleatorias pero estables por día
 const pocketRotation = (day: number) => {
@@ -29,25 +22,16 @@ const iconRotation = (day: number) => {
   return (5 + random * 5) * (random > 0.5 ? 1 : -1)
 }
 
-// Hora de apertura por día (hora de Lima)
-const unlockHour = (day: number) => (day === 8 ? 18 : day === 9 ? 17 : 16)
+export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new Set(), edition }: WelcomeSectionProps) {
+  const gifts = edition.gifts
 
-export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new Set(), gifts = [] }: WelcomeSectionProps) {
-  // Usar hora de Lima para visualización consistente
-  const [limaDate, setLimaTime] = useState(new Date())
+  // Hora de Lima, actualizada cada minuto
+  const [now, setNow] = useState<LimaTime>(() => limaNow())
 
   useEffect(() => {
-    const updateTime = () => {
-      setLimaTime(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Lima" })))
-    }
-    updateTime()
-    const interval = setInterval(updateTime, 60000)
+    const interval = setInterval(() => setNow(limaNow()), 60000)
     return () => clearInterval(interval)
   }, [])
-
-  const currentDay = limaDate.getDate()
-  const currentMonth = limaDate.getMonth() + 1
-  const currentHour = limaDate.getHours()
 
   // Estrellas de fondo - generadas solo en el cliente para evitar errores de hidratación
   const [stars, setStars] = useState<
@@ -68,13 +52,10 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
 
   const pockets = useMemo(() => {
     const giftsMap = new Map(gifts.map((g) => [g.day, g]))
-
-    const isTimeAvailable = (day: number) => {
-      if (currentMonth !== 12) return false
-      if (currentDay > day) return true
-      if (currentDay === day) return currentHour >= unlockHour(day)
-      return false
-    }
+    const iconByDay = new Map(
+      [...gifts].sort((a, b) => a.day - b.day).map((g, i) => [g.day, edition.icons[i] ?? "🎁"])
+    )
+    const isTimeAvailable = (day: number) => isDayAvailable(edition, day, now)
 
     // Primer regalo disponible y sin abrir (en orden)
     const firstAvailableDay = gifts
@@ -96,12 +77,12 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
         isOpened,
         isGiftAvailable,
         isTodayAvailable: isGiftAvailable && !isOpened && firstAvailableDay === day,
-        icon: gift ? CHRISTMAS_ICONS[gift.day - 8] : null,
+        icon: iconByDay.get(day) ?? null,
         rotation: pocketRotation(day),
         iconRotation: iconRotation(day),
       }
     })
-  }, [gifts, openedGifts, currentMonth, currentDay, currentHour])
+  }, [gifts, edition, openedGifts, now])
 
   return (
     <div className="w-full flex items-start justify-start p-3 sm:p-4 lg:p-5 relative overflow-hidden lg:min-h-screen bg-wine-gradient">
@@ -157,7 +138,7 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
               <div className="gold-divider flex-1" />
               <span className="text-amber-300/80 text-[10px]">✦</span>
               <span className="text-[10px] sm:text-xs text-amber-100/80 font-semibold tracking-[0.2em] text-shadow-soft">
-                4 SORPRESAS
+                {gifts.length} SORPRESAS
               </span>
               <span className="text-amber-300/80 text-[10px]">✦</span>
               <div className="gold-divider flex-1" />
@@ -271,7 +252,7 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                 </span>
                 <span className="font-mono text-2xl lg:text-[1.7rem] font-extrabold text-white text-shadow-pixel">
                   {openedGifts.size}
-                  <span className="text-white/45 text-lg">/{gifts.length || 4}</span>
+                  <span className="text-white/45 text-lg">/{gifts.length}</span>
                 </span>
               </div>
 
@@ -281,14 +262,16 @@ export const WelcomeSection = memo(function WelcomeSection({ openedGifts = new S
                 <span className="text-[11px] text-white/65 font-semibold uppercase tracking-[0.18em] text-shadow-soft">
                   Diciembre
                 </span>
-                <span className="font-mono text-2xl lg:text-[1.7rem] font-extrabold text-white text-shadow-pixel">2025</span>
+                <span className="font-mono text-2xl lg:text-[1.7rem] font-extrabold text-white text-shadow-pixel">{edition.year}</span>
               </div>
             </div>
 
             <div className="gold-divider max-w-xs mx-auto" />
 
             <p className="text-xs text-amber-100/75 font-medium text-shadow-soft">
-              ✦ Selecciona un regalo en el árbol para descubrirlo ✦
+              {edition.archived
+                ? `✦ Así fue nuestro diciembre ${edition.year} ✦`
+                : "✦ Selecciona un regalo en el árbol para descubrirlo ✦"}
             </p>
           </div>
         </div>
