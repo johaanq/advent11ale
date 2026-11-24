@@ -11,7 +11,7 @@ import {
   subscribeToComments,
   subscribeToLikes,
   type Comment,
-} from "@/lib/supabase-interactions"
+} from "@/lib/api"
 
 interface GiftDetailPageProps {
   gift: {

@@ -1,0 +1,14 @@
+name = "advent11ale-api"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+# Crea el namespace con:  npx wrangler kv namespace create ADVENT_KV
+# y pega aquí el id que te devuelve.
+[[kv_namespaces]]
+binding = "ADVENT_KV"
+id = "REEMPLAZAR_CON_ID_DEL_KV"
+
+[vars]
+# Pon aquí la URL de tu sitio (p. ej. "https://advent11ale.vercel.app") para
+# que solo tu web pueda usar la API. Varios orígenes: separados por coma.
+ALLOWED_ORIGINS = "*"

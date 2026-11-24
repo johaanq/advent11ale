@@ -12,8 +12,7 @@ import Snowfall from "@/components/snowfall"
 
 // Lazy load del componente 3D pesado
 const ChristmasScene3D = lazy(() => import("@/components/christmas-scene-3d").then(module => ({ default: module.ChristmasScene3D })))
-import { getOpenedGifts, openGift, getLastGiftOpenedDate, subscribeToOpenedGifts } from "@/lib/supabase-gifts"
-import { supabase } from "@/lib/supabase"
+import { getOpenedGifts, openGift, getLastGiftOpenedDate, subscribeToOpenedGifts, resetOpenedGifts } from "@/lib/api"
 
 export default function Home() {
   const [selectedGift, setSelectedGift] = useState<number | null>(null)
@@ -155,36 +154,24 @@ export default function Home() {
   }, [isHydrated])
 
   // Función para reiniciar regalos y fechas
-  const resetGifts = useCallback(async () => {
-    try {
-      // Eliminar todos los regalos abiertos de Supabase
-      const { error } = await supabase
-        .from('opened_gifts')
-        .delete()
-        .neq('gift_id', -1) // Eliminar todos (condición siempre verdadera ya que gift_id nunca es -1)
-      
-      if (error) {
-        console.error('Error al reiniciar regalos en Supabase:', error)
-      } else {
-        // Actualizar estado local
-        setOpenedGifts(new Set())
-        setLastGiftOpenedDate(null)
-        setSelectedGift(null)
-        setShowReveal(false)
-        setIsAnimating(false)
-      }
-    } catch (error) {
-      console.error('Error inesperado al reiniciar regalos:', error)
+  // En modo Worker requiere el RESET_TOKEN configurado en Cloudflare
+  const resetGifts = useCallback(async (token?: string) => {
+    const ok = await resetOpenedGifts(token)
+    if (ok) {
+      setOpenedGifts(new Set())
+      setLastGiftOpenedDate(null)
+      setSelectedGift(null)
+      setShowReveal(false)
+      setIsAnimating(false)
     }
+    return ok
   }, [])
 
-  // Exponer función de reinicio en window para uso desde consola (solo para desarrollo)
+  // Exponer función de reinicio en window para uso desde consola: resetGifts("token")
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).resetGifts = async () => {
-        await resetGifts()
-        window.location.reload()
-      }
+    const w = window as Window & { resetGifts?: (token?: string) => Promise<void> }
+    w.resetGifts = async (token?: string) => {
+      if (await resetGifts(token)) window.location.reload()
     }
   }, [resetGifts])
 
